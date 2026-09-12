@@ -86,4 +86,18 @@ public record PalConfig(
     public Set<String> whitelistSet() {
         return Set.copyOf(hostile_whitelist);
     }
+
+    /**
+     * 返回一个仅白名单不同的新实例（不可变拷贝）。
+     *
+     * <p>record 不可变，白名单变更走「整体替换」而非原地修改，
+     * 配合 {@code ConfigManager} 的 volatile 引用保证热重载线程安全。
+     */
+    public PalConfig withWhitelist(List<String> newWhitelist) {
+        return new PalConfig(
+                newWhitelist,
+                kin_alert_radius, anger_cooldown_seconds, anger_cooldown_distance,
+                trading_enabled, boss_trading_enabled, max_uses_per_day, restock_interval_days,
+                price_max, epk_cheap, epk_rare, price_overrides);
+    }
 }
