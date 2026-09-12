@@ -158,14 +158,6 @@
       "default_whitelisted": true
     },
     {
-      "id": "ender_dragon",
-      "zh": "末影龙",
-      "default_whitelisted": false,
-      "adapted_v1": false,
-      "ai_system": "custom (EnderDragonPhaseManager)",
-      "note": "v1.0 暂缓：自有 Phase AI，不适配也不进默认白名单 → 行为完全不变；配置无效时日志给 INFO 提示"
-    },
-    {
       "id": "wither",
       "zh": "凋灵",
       "default_whitelisted": false,
