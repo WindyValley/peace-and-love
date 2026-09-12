@@ -1,7 +1,10 @@
 package top.windyvalley.peaceandlove;
 
+import dev.architectury.platform.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import top.windyvalley.peaceandlove.config.ConfigCommand;
+import top.windyvalley.peaceandlove.config.ConfigManager;
 
 /**
  * 模组公共入口。
@@ -19,6 +22,9 @@ public final class PeaceAndLove {
 
     public static final Logger LOGGER = LoggerFactory.getLogger("Peace And Love");
 
+    /** 配置管理器单例，门控/定价/命令共用。 */
+    private static ConfigManager configManager;
+
     private PeaceAndLove() {
     }
 
@@ -28,13 +34,21 @@ public final class PeaceAndLove {
     public static void init() {
         LOGGER.info("Peace And Love 正在初始化");
 
-        // TODO(T-CFG-001)   加载配置文件
-        // TODO(T-SCOPE-001) 构建已适配生物清单
-        // TODO(T-SCOPE-002) 初始化双重门控判定器
+        // 配置最先加载 —— 门控判定依赖它
+        configManager = new ConfigManager(Platform.getConfigFolder());
+
+        // TODO(T-SCOPE-001) 构建已适配生物清单（常量在 AdaptedMobs，无需初始化）
         // TODO(T-NEUT-001)  注册生物中立化处理
         // TODO(T-TRADE-001) 注册交易系统
-        // TODO(T-CFG-003)   注册管理命令
+
+        // 命令最后注册（依赖配置就绪）
+        new ConfigCommand(configManager).register();
 
         LOGGER.info("Peace And Love 初始化完成");
+    }
+
+    /** 全局配置管理器。 */
+    public static ConfigManager config() {
+        return configManager;
     }
 }
