@@ -5,6 +5,11 @@ out/
 bin/
 !gradle/wrapper/gradle-wrapper.jar
 
+# 正式工程三模块的构建产物
+common/build/
+fabric/build/
+neoforge/build/
+
 # ───────────── Minecraft 运行时 ─────────────
 run/
 runs/
