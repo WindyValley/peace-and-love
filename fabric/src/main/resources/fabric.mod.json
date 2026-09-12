@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "peaceandlove",
+  "version": "${version}",
+  "name": "Peace And Love",
+  "description": "把原版敌对生物变成可交易的中立生物，让和平玩家无需战斗也能获得怪物掉落物。",
+  "authors": ["WindyValley"],
+  "contact": {
+    "homepage": "https://github.com/WindyValley/peace-and-love",
+    "sources": "https://github.com/WindyValley/peace-and-love",
+    "issues": "https://github.com/WindyValley/peace-and-love/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/peaceandlove/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "default",
+        "value": "top.windyvalley.peaceandlove.fabric.PeaceAndLoveFabric"
+      }
+    ]
+  },
+  "mixins": [
+    "peaceandlove-common.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.0"
+  }
+}

@@ -1,0 +1,44 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/WindyValley/peace-and-love/issues"
+
+[[mods]]
+modId = "peaceandlove"
+version = "${version}"
+displayName = "Peace And Love"
+authors = "WindyValley"
+displayURL = "https://github.com/WindyValley/peace-and-love"
+logoFile = "icon.png"
+description = '''
+把原版敌对生物变成可交易的中立生物，让和平玩家无需战斗也能获得怪物掉落物。
+
+- 38 种敌对生物默认转为中立，不再主动攻击
+- 右键即可用绿宝石购买它们的掉落物
+- 价格随稀有度浮动，每游戏日限购一次
+- 你打它，它仍然会还手
+'''
+
+[[mixins]]
+config = "peaceandlove-common.mixins.json"
+
+[[dependencies.peaceandlove]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.peaceandlove]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.peaceandlove]]
+modId = "architectury"
+type = "required"
+versionRange = "[13.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

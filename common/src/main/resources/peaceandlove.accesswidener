@@ -1,0 +1,5 @@
+accessWidener	v2	named
+
+# P1 已验证：向 Mob 注入 Merchant 接口不需要 Access Widener / Access Transformer。
+# 本文件保留为空，供后续确有需要时使用（如访问 private 字段）。
+# 详见 docs/P1-P4-VERIFY.md
