@@ -52,7 +52,32 @@
 
 **自查发现 3 处自身错误并已修正**：`Merchant` 方法数 9→12；P4 原假设错误；P4 v2 漏掉末影人。
 
-**下一步**：dev 阶段 Sprint 1，从 T-SETUP-001 开始。
+**下一步**：Sprint 2 中立化核心（T-NEUT-001~003）。
+
+---
+
+## Dev 阶段 · Sprint 1（2026-09-12 完成）
+
+里程碑 **M1 达成**：服务端能起、命令骨架可用、门控判定正确（但尚无行为变化——中立化未接 Mixin）。
+
+| 任务 | 产出 | 测试 |
+|------|------|------|
+| T-SETUP-001~003 | 正式工程骨架 + 入口类 + 7 包分层 | — |
+| T-CFG-001~004 | PalConfig/ConfigLoader/ConfigManager + /pal 命令骨架 | 30 |
+| T-SCOPE-001~003 | AdaptedMobs(38) + 双重门控 + 无效提示 | 26 |
+| T-SETUP-004 | CI 工作流（本地验证过，跑绿待推送） | — |
+
+**单测 60 条全绿。** 双端 jar 构建通过。
+
+修正的问题：
+- neutralization_plan_v3.json 混入末影龙（33+6=39）→ 剔除后 32+6=38
+- 设计文档（/pal）与任务卡（/peaceandlove）命令名不一致 → 统一双注册
+- EntityType 测试需 Bootstrap 引导（已记 memory）
+
+移交真机/后续的未测项：
+- /pal 命令注册、权限、tab 补全（依赖服务端运行时）
+- CI 在 GitHub 实际跑绿（需推送）
+- 门控实际效果（待 T-NEUT 挂上 Mixin 后验证）
 
 ---
 
