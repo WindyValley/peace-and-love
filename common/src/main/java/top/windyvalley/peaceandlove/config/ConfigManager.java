@@ -34,9 +34,15 @@ public final class ConfigManager {
     /** 当前生效的配置。volatile 保证多线程（服务端 tick / 命令线程）可见。 */
     private volatile PalConfig current;
 
+    /** 已提示过的无效白名单 id（T-SCOPE-003 去重，不刷屏）。 */
+    private final java.util.Set<String> ineffectiveNotified =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public ConfigManager(Path configDir) {
         this.loader = new ConfigLoader(configDir);
         this.current = loader.load();
+        // 初次加载也提示无效白名单（T-SCOPE-003）
+        logIneffectiveWhitelist(this.current);
     }
 
     /** 当前生效的配置。门控/定价必须从这里读，不得缓存。 */
@@ -77,12 +83,10 @@ public final class ConfigManager {
         PalConfig old = this.current;
         this.current = fresh;
 
-        // 校验白名单有效性，无效条目打 INFO（docs/02-design.md §10）
-        for (String id : fresh.hostile_whitelist()) {
-            if (NeutralizationScope.isIneffectiveWhitelistEntry(id)) {
-                LOGGER.info("白名单条目 [{}] 对应的生物未适配，配置无效（该生物行为完全不受影响）", id);
-            }
-        }
+        // 白名单有效性提示（T-SCOPE-003）：未适配条目打 INFO（非 WARN，
+        // 这不是错误），文案说明「配置不生效，行为与原版一致」。reload 时
+        // 用 Set 去重，同一 id 只提示一次，不刷屏。
+        logIneffectiveWhitelist(fresh);
 
         ReloadResult result = ReloadResult.success(summarize(old, fresh));
 
@@ -144,6 +148,23 @@ public final class ConfigManager {
     /** 补全 minecraft: 前缀。 */
     private static String normalize(String id) {
         return id.contains(":") ? id : "minecraft:" + id;
+    }
+
+    /**
+     * 白名单有效性提示（T-SCOPE-003）。
+     *
+     * <p>未适配条目打 <b>INFO 而非 WARN</b> —— 这不是错误，只是该配置
+     * 对未适配生物不生效。同一 id 在两次 reload 间只提示一次，不刷屏。
+     */
+    private void logIneffectiveWhitelist(PalConfig cfg) {
+        for (String id : cfg.hostile_whitelist()) {
+            if (NeutralizationScope.isIneffectiveWhitelistEntry(id)
+                    && ineffectiveNotified.add(id)) {
+                LOGGER.info("白名单条目 [{}] 对应的生物 v1.0 未适配，该配置不生效，其行为与原版一致。", id);
+            }
+        }
+        // 已不在白名单中的 id 从去重集合移除，下次再加入时可重新提示
+        ineffectiveNotified.retainAll(cfg.hostile_whitelist());
     }
 
     /** 生成变更摘要（供命令反馈）。 */
