@@ -1,4 +1,4 @@
-# T-CFG-003: /peaceandlove reload 热重载命令
+# T-CFG-003: /pal reload 热重载命令
 
 **状态：** todo
 **优先级：** P0
@@ -18,7 +18,7 @@
 
 ## 验收标准
 
-- [ ] `/peaceandlove reload` 需 OP 权限（level 2）
+- [ ] `/pal reload` 需 OP 权限（level 2），`/peaceandlove` 作为别名同时注册
 - [ ] 重载后白名单变更立即影响已加载实体（调用 neutralize/restore）
 - [ ] 重载后定价表重建
 - [ ] 返回反馈消息含变更摘要

@@ -507,12 +507,21 @@ public final class RestockManager {
 
 ## 7. 命令设计
 
+主命令 `/pal`（简写）与 `/peaceandlove`（完整名）**同时注册**，对用户更友好。两者等价。
+
 | 命令 | 权限 | 作用 |
 |------|------|------|
 | `/pal reload` | OP 2 | 热重载配置，触发 `restore()` + 重新 `neutralize()` |
+| `/pal whitelist list` | OP 2 | 列出当前白名单（未适配条目标注「无效」） |
+| `/pal whitelist add <id>` | OP 2 | 加入白名单。tab 补全来自**已适配列表**（排除已在白名单的），支持带/不带 `minecraft:` 前缀 |
+| `/pal whitelist remove <id>` | OP 2 | 移出白名单。tab 补全来自当前白名单 |
 | `/pal debug price <entity>` | OP 2 | 打印该生物的完整定价表（epk / 价格 / 产出） |
 | `/pal debug scope <entity>` | OP 2 | 打印生效判定过程（是否适配 / 是否白名单 / 结论） |
 | `/pal debug anger` | OP 2 | 打印附近生物的仇恨状态与来源 |
+
+> **实现说明**：命令层只做参数解析与消息回显，所有逻辑委托给 `ConfigManager`（已单测覆盖）。基于 Architectury `CommandRegistrationEvent`，common 模块一处注册、Fabric/NeoForge 两端生效。
+>
+> **验证方式**：命令注册、权限、tab 补全依赖服务端运行时，无法用纯 JUnit 验证，属「已写未验」，待 T-NEUT 挂上 Mixin、服务端可启动后真机验证。
 
 ---
 

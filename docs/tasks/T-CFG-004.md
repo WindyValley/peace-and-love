@@ -1,4 +1,4 @@
-# T-CFG-004: /peaceandlove whitelist 命令族
+# T-CFG-004: /pal whitelist 命令族
 
 **状态：** todo
 **优先级：** P0
