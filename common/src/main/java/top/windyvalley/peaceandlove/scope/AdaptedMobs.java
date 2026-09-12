@@ -85,6 +85,21 @@ public final class AdaptedMobs {
         return ALL.contains(type);
     }
 
+    /**
+     * 已适配生物的注册名集合（如 "minecraft:zombie"），供白名单有效性校验。
+     *
+     * <p>惰性初始化：EntityType 反查 id 需要注册表已 bootstrap，
+     * 不能在类加载期做。
+     */
+    public static Set<String> adaptedIds() {
+        Set<String> ids = new java.util.HashSet<>();
+        for (EntityType<?> t : ALL) {
+            ids.add(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+                    .getKey(t).toString());
+        }
+        return Set.copyOf(ids);
+    }
+
     /** 已适配总数，供测试断言。 */
     public static int count() {
         return ALL.size();
