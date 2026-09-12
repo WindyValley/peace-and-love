@@ -1,0 +1,62 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Validate Gradle wrapper
+        # wrapper jar 必须入库，否则 CI 无法启动。
+        # .gitignore 里 spikes/**/*.jar 会连带忽略它，已加反向豁免。
+        run: |
+          test -f gradle/wrapper/gradle-wrapper.jar \
+            || (echo "::error::gradle-wrapper.jar 缺失" && exit 1)
+          chmod +x gradlew
+
+      - name: Build (dual loader)
+        # 一次构建产出 Fabric + NeoForge 双端 jar，并跑全部单测
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: peaceandlove-jars
+          path: |
+            fabric/build/libs/peaceandlove-*.jar
+            neoforge/build/libs/peaceandlove-*.jar
+          # 排除 dev-shadow 与 sources，只留可分发产物
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: common/build/reports/tests/test/**
+          if-no-files-found: ignore
+          retention-days: 7
