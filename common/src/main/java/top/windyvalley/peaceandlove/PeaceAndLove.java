@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.windyvalley.peaceandlove.config.ConfigCommand;
 import top.windyvalley.peaceandlove.config.ConfigManager;
+import top.windyvalley.peaceandlove.neutralize.NeutralizationService;
 
 /**
  * 模组公共入口。
@@ -25,6 +26,9 @@ public final class PeaceAndLove {
     /** 配置管理器单例，门控/定价/命令共用。 */
     private static ConfigManager configManager;
 
+    /** 中立化服务单例。 */
+    private static NeutralizationService neutralizationService;
+
     private PeaceAndLove() {
     }
 
@@ -37,8 +41,10 @@ public final class PeaceAndLove {
         // 配置最先加载 —— 门控判定依赖它
         configManager = new ConfigManager(Platform.getConfigFolder());
 
-        // TODO(T-SCOPE-001) 构建已适配生物清单（常量在 AdaptedMobs，无需初始化）
-        // TODO(T-NEUT-001)  注册生物中立化处理
+        // 中立化接线（T-NEUT）：实体生成时 neutralize + Brain 系每 tick 擦除
+        neutralizationService = new NeutralizationService(configManager);
+        neutralizationService.register();
+
         // TODO(T-TRADE-001) 注册交易系统
 
         // 命令最后注册（依赖配置就绪）
@@ -50,5 +56,10 @@ public final class PeaceAndLove {
     /** 全局配置管理器。 */
     public static ConfigManager config() {
         return configManager;
+    }
+
+    /** 中立化服务（供 AngerController 接线 anger 探针）。 */
+    public static NeutralizationService neutralization() {
+        return neutralizationService;
     }
 }
