@@ -76,8 +76,25 @@
 
 移交真机/后续的未测项：
 - /pal 命令注册、权限、tab 补全（依赖服务端运行时）
-- CI 在 GitHub 实际跑绿（需推送）
+- ~~CI 在 GitHub 实际跑绿（需推送）~~ ✅ 已完成（见下）
 - 门控实际效果（待 T-NEUT 挂上 Mixin 后验证）
+
+---
+
+## GitHub 仓库与 CI（2026-09-12）
+
+- 仓库：`https://github.com/WindyValley/peace-and-love`（**私有**，release 时再解禁）
+- 远程：`origin`，主分支 `main`
+- git 代理已配 `http://127.0.0.1:1080`
+
+CI 两次跑绿：
+| run | 耗时 | 结论 | 说明 |
+|-----|------|------|------|
+| 34698848293 | 5m16s | ✅ | 首次。双端 jar + 60 单测全过，产物 178KB |
+| 34699189537 | 2m16s | ✅ | 缓存生效。setup-java v4→v5 消除弃用警告 |
+
+残留警告：checkout/upload-artifact/setup-gradle 目标 Node 20 被强制升 24，
+属 action 官方未迁移，GitHub 自动兼容，不影响构建。
 
 ---
 
