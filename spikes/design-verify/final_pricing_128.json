@@ -1,0 +1,891 @@
+{
+  "params": {
+    "price_min": 1,
+    "price_max": 128,
+    "epk_cheap": 2.0,
+    "epk_rare": 0.005
+  },
+  "monotonic_violations": 0,
+  "entries": [
+    {
+      "entity": "blaze",
+      "item": "blaze_rod",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "bogged",
+      "item": "arrow",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "bogged",
+      "item": "bone",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "bogged",
+      "item": "tipped_arrow",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "breeze",
+      "item": "breeze_rod",
+      "epk": 1.5,
+      "price_64": 4,
+      "price_128": 7,
+      "count_max": 2
+    },
+    {
+      "entity": "cat",
+      "item": "string",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "cave_spider",
+      "item": "string",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "cave_spider",
+      "item": "spider_eye",
+      "epk": 0.3333333333333333,
+      "price_64": 20,
+      "price_128": 39,
+      "count_max": 1
+    },
+    {
+      "entity": "chicken",
+      "item": "feather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "chicken",
+      "item": "chicken",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "cod",
+      "item": "cod",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "cod",
+      "item": "bone_meal",
+      "epk": 0.05,
+      "price_64": 40,
+      "price_128": 79,
+      "count_max": 1
+    },
+    {
+      "entity": "cow",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "cow",
+      "item": "beef",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "creeper",
+      "item": "gunpowder",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "dolphin",
+      "item": "cod",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "donkey",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "drowned",
+      "item": "rotten_flesh",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "drowned",
+      "item": "copper_ingot",
+      "epk": 0.11,
+      "price_64": 31,
+      "price_128": 62,
+      "count_max": 1
+    },
+    {
+      "entity": "elder_guardian",
+      "item": "prismarine_shard",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "elder_guardian",
+      "item": "cod",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "elder_guardian",
+      "item": "prismarine_crystals",
+      "epk": 0.3333333333333333,
+      "price_64": 20,
+      "price_128": 39,
+      "count_max": 1
+    },
+    {
+      "entity": "elder_guardian",
+      "item": "wet_sponge",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "elder_guardian",
+      "item": "tide_armor_trim_smithing_template",
+      "epk": 0.2,
+      "price_64": 25,
+      "price_128": 50,
+      "count_max": 1
+    },
+    {
+      "entity": "enderman",
+      "item": "ender_pearl",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "evoker",
+      "item": "totem_of_undying",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "evoker",
+      "item": "emerald",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "ghast",
+      "item": "ghast_tear",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "ghast",
+      "item": "gunpowder",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "glow_squid",
+      "item": "glow_ink_sac",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "guardian",
+      "item": "prismarine_shard",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "guardian",
+      "item": "cod",
+      "epk": 0.4,
+      "price_64": 18,
+      "price_128": 35,
+      "count_max": 1
+    },
+    {
+      "entity": "guardian",
+      "item": "prismarine_crystals",
+      "epk": 0.4,
+      "price_64": 18,
+      "price_128": 35,
+      "count_max": 1
+    },
+    {
+      "entity": "hoglin",
+      "item": "porkchop",
+      "epk": 3.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 4
+    },
+    {
+      "entity": "hoglin",
+      "item": "leather",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "horse",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "husk",
+      "item": "rotten_flesh",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "husk",
+      "item": "iron_ingot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "husk",
+      "item": "carrot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "husk",
+      "item": "potato",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "iron_golem",
+      "item": "poppy",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "iron_golem",
+      "item": "iron_ingot",
+      "epk": 4.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 5
+    },
+    {
+      "entity": "llama",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "magma_cube",
+      "item": "magma_cream",
+      "epk": 0.013125,
+      "price_64": 54,
+      "price_128": 108,
+      "count_max": 1
+    },
+    {
+      "entity": "magma_cube",
+      "item": "pearlescent_froglight",
+      "epk": 0.075,
+      "price_64": 36,
+      "price_128": 71,
+      "count_max": 1
+    },
+    {
+      "entity": "magma_cube",
+      "item": "verdant_froglight",
+      "epk": 0.075,
+      "price_64": 36,
+      "price_128": 71,
+      "count_max": 1
+    },
+    {
+      "entity": "magma_cube",
+      "item": "ochre_froglight",
+      "epk": 0.075,
+      "price_64": 36,
+      "price_128": 71,
+      "count_max": 1
+    },
+    {
+      "entity": "mooshroom",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "mooshroom",
+      "item": "beef",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "mule",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "panda",
+      "item": "bamboo",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "parrot",
+      "item": "feather",
+      "epk": 1.5,
+      "price_64": 4,
+      "price_128": 7,
+      "count_max": 2
+    },
+    {
+      "entity": "phantom",
+      "item": "phantom_membrane",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "pig",
+      "item": "porkchop",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "pillager",
+      "item": "ominous_bottle",
+      "epk": 0.3,
+      "price_64": 21,
+      "price_128": 41,
+      "count_max": 1
+    },
+    {
+      "entity": "polar_bear",
+      "item": "cod",
+      "epk": 0.75,
+      "price_64": 11,
+      "price_128": 22,
+      "count_max": 2
+    },
+    {
+      "entity": "polar_bear",
+      "item": "salmon",
+      "epk": 0.25,
+      "price_64": 23,
+      "price_128": 45,
+      "count_max": 2
+    },
+    {
+      "entity": "pufferfish",
+      "item": "pufferfish",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "pufferfish",
+      "item": "bone_meal",
+      "epk": 0.05,
+      "price_64": 40,
+      "price_128": 79,
+      "count_max": 1
+    },
+    {
+      "entity": "rabbit",
+      "item": "rabbit_hide",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "rabbit",
+      "item": "rabbit",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "rabbit",
+      "item": "rabbit_foot",
+      "epk": 0.1,
+      "price_64": 32,
+      "price_128": 64,
+      "count_max": 1
+    },
+    {
+      "entity": "ravager",
+      "item": "saddle",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "salmon",
+      "item": "salmon",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "salmon",
+      "item": "bone_meal",
+      "epk": 0.05,
+      "price_64": 40,
+      "price_128": 79,
+      "count_max": 1
+    },
+    {
+      "entity": "sheep",
+      "item": "mutton",
+      "epk": 1.5,
+      "price_64": 4,
+      "price_128": 7,
+      "count_max": 2
+    },
+    {
+      "entity": "shulker",
+      "item": "shulker_shell",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "skeleton",
+      "item": "arrow",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "skeleton",
+      "item": "bone",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "skeleton_horse",
+      "item": "bone",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "slime",
+      "item": "slime_ball",
+      "epk": 0.105,
+      "price_64": 32,
+      "price_128": 63,
+      "count_max": 2
+    },
+    {
+      "entity": "slime",
+      "item": "slime_ball",
+      "epk": 0.045,
+      "price_64": 41,
+      "price_128": 81,
+      "count_max": 1
+    },
+    {
+      "entity": "snow_golem",
+      "item": "snowball",
+      "epk": 7.5,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 15
+    },
+    {
+      "entity": "spider",
+      "item": "string",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "spider",
+      "item": "spider_eye",
+      "epk": 0.3333333333333333,
+      "price_64": 20,
+      "price_128": 39,
+      "count_max": 1
+    },
+    {
+      "entity": "squid",
+      "item": "ink_sac",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "stray",
+      "item": "arrow",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "stray",
+      "item": "bone",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "stray",
+      "item": "tipped_arrow",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "strider",
+      "item": "string",
+      "epk": 3.5,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 5
+    },
+    {
+      "entity": "trader_llama",
+      "item": "leather",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "tropical_fish",
+      "item": "tropical_fish",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "tropical_fish",
+      "item": "bone_meal",
+      "epk": 0.05,
+      "price_64": 40,
+      "price_128": 79,
+      "count_max": 1
+    },
+    {
+      "entity": "turtle",
+      "item": "seagrass",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "turtle",
+      "item": "bowl",
+      "epk": 0.3,
+      "price_64": 21,
+      "price_128": 41,
+      "count_max": 1
+    },
+    {
+      "entity": "vindicator",
+      "item": "emerald",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "warden",
+      "item": "sculk_catalyst",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 1
+    },
+    {
+      "entity": "witch",
+      "item": "glowstone_dust",
+      "epk": 0.2857142857142857,
+      "price_64": 21,
+      "price_128": 42,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "sugar",
+      "epk": 0.2857142857142857,
+      "price_64": 21,
+      "price_128": 42,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "spider_eye",
+      "epk": 0.2857142857142857,
+      "price_64": 21,
+      "price_128": 42,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "glass_bottle",
+      "epk": 0.2857142857142857,
+      "price_64": 21,
+      "price_128": 42,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "gunpowder",
+      "epk": 0.2857142857142857,
+      "price_64": 21,
+      "price_128": 42,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "stick",
+      "epk": 0.5714285714285714,
+      "price_64": 14,
+      "price_128": 28,
+      "count_max": 2
+    },
+    {
+      "entity": "witch",
+      "item": "redstone",
+      "epk": 6.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 8
+    },
+    {
+      "entity": "wither_skeleton",
+      "item": "coal",
+      "epk": 0.3333333333333333,
+      "price_64": 20,
+      "price_128": 39,
+      "count_max": 1
+    },
+    {
+      "entity": "wither_skeleton",
+      "item": "bone",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "wither_skeleton",
+      "item": "wither_skeleton_skull",
+      "epk": 0.025,
+      "price_64": 47,
+      "price_128": 94,
+      "count_max": 1
+    },
+    {
+      "entity": "zoglin",
+      "item": "rotten_flesh",
+      "epk": 2.0,
+      "price_64": 1,
+      "price_128": 1,
+      "count_max": 3
+    },
+    {
+      "entity": "zombie",
+      "item": "rotten_flesh",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "zombie",
+      "item": "iron_ingot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombie",
+      "item": "carrot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombie",
+      "item": "potato",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombie_horse",
+      "item": "rotten_flesh",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "zombie_villager",
+      "item": "rotten_flesh",
+      "epk": 1.0,
+      "price_64": 8,
+      "price_128": 16,
+      "count_max": 2
+    },
+    {
+      "entity": "zombie_villager",
+      "item": "iron_ingot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombie_villager",
+      "item": "carrot",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombie_villager",
+      "item": "potato",
+      "epk": 0.008333333333333333,
+      "price_64": 59,
+      "price_128": 117,
+      "count_max": 1
+    },
+    {
+      "entity": "zombified_piglin",
+      "item": "rotten_flesh",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "zombified_piglin",
+      "item": "gold_nugget",
+      "epk": 0.5,
+      "price_64": 16,
+      "price_128": 30,
+      "count_max": 1
+    },
+    {
+      "entity": "zombified_piglin",
+      "item": "gold_ingot",
+      "epk": 0.025,
+      "price_64": 47,
+      "price_128": 94,
+      "count_max": 1
+    }
+  ]
+}

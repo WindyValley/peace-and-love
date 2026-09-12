@@ -1,0 +1,170 @@
+==========================================================================
+design 阶段接口核实 —— 全部签名来自 1.21.1 官方 jar + mappings
+==========================================================================
+
+==========================================================================
+① Merchant 接口 —— 方案 A 需实现的全部方法
+  net.minecraft.world.item.trading.Merchant
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public abstract      void                               setTradingPlayer(net.minecraft.world.entity.player.Player) [abstract]
+    public abstract      net.minecraft.world.entity.player.Player getTradingPlayer() [abstract]
+    public abstract      net.minecraft.world.item.trading.MerchantOffers getOffers() [abstract]
+    public abstract      void                               notifyTradeUpdated(net.minecraft.world.item.ItemStack) [abstract]
+    public abstract      int                                getVillagerXp() [abstract]
+    public abstract      boolean                            showProgressBar() [abstract]
+    public abstract      net.minecraft.sounds.SoundEvent    getNotifyTradeSound() [abstract]
+    public               boolean                            canRestock()
+    public abstract      boolean                            isClientSide() [abstract]
+
+==========================================================================
+①b InventoryCarrier（若 Merchant 需要）
+  net.minecraft.world.entity.npc.InventoryCarrier
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public abstract      net.minecraft.world.SimpleContainer getInventory() [abstract]
+    public static        void                               pickUpItem(net.minecraft.world.entity.Mob,net.minecraft.world.entity.npc.InventoryCarrier,net.minecraft.world.entity.item.ItemEntity)
+    public               void                               writeInventoryToTag(net.minecraft.nbt.CompoundTag,net.minecraft.core.HolderLookup$Provider)
+
+==========================================================================
+② Mob —— 中立化注入点
+  net.minecraft.world.entity.Mob
+==========================================================================
+  implements: net.minecraft.world.entity.EquipmentUser, net.minecraft.world.entity.Leashable, net.minecraft.world.entity.Targeting
+  extends   : net.minecraft.world.entity.LivingEntity
+
+  -- 字段 --
+
+  -- 方法 --
+    protected            void                               registerGoals()
+    public               net.minecraft.world.entity.LivingEntity getTarget()
+    protected final      net.minecraft.world.entity.LivingEntity getTargetFromBrain()
+    public               void                               setTarget(net.minecraft.world.entity.LivingEntity)
+
+==========================================================================
+③ LivingEntity.hurt —— 伤害入口
+  net.minecraft.world.entity.LivingEntity
+==========================================================================
+  implements: net.minecraft.world.entity.Attackable
+  extends   : net.minecraft.world.entity.Entity
+
+  -- 方法 --
+    public               net.minecraft.world.entity.LivingEntity getLastHurtByMob()
+    public               int                                getLastHurtByMobTimestamp()
+    protected            void                               hurtCurrentlyUsedShield(float)
+
+==========================================================================
+④ DamageSource —— 判定「是否玩家攻击」的关键
+  net.minecraft.world.damagesource.DamageSource
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public               java.lang.String                   toString()
+    public               float                              getFoodExhaustion()
+    public               boolean                            isDirect()
+    private              void                               <init>(net.minecraft.core.Holder,net.minecraft.world.entity.Entity,net.minecraft.world.entity.Entity,net.minecraft.world.phys.Vec3)
+    public               net.minecraft.world.entity.Entity  getDirectEntity()
+    public               net.minecraft.world.entity.Entity  getEntity()
+    public               net.minecraft.world.item.ItemStack getWeaponItem()
+    public               java.lang.String                   getMsgId()
+    public               boolean                            scalesWithDifficulty()
+    public               boolean                            isCreativePlayer()
+    public               net.minecraft.world.phys.Vec3      getSourcePosition()
+    public               net.minecraft.world.phys.Vec3      sourcePositionRaw()
+    public               net.minecraft.world.damagesource.DamageType type()
+    public               net.minecraft.core.Holder          typeHolder()
+
+==========================================================================
+⑤ NeutralMob —— 复用原版记仇/冷却机制
+  net.minecraft.world.entity.NeutralMob
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public abstract      int                                getRemainingPersistentAngerTime() [abstract]
+    public abstract      java.util.UUID                     getPersistentAngerTarget() [abstract]
+    public abstract      void                               startPersistentAngerTimer() [abstract]
+    public               void                               addPersistentAngerSaveData(net.minecraft.nbt.CompoundTag)
+    public               boolean                            isAngry()
+    public               void                               forgetCurrentTargetAndRefreshUniversalAnger()
+    public               void                               stopBeingAngry()
+    public abstract      net.minecraft.world.entity.LivingEntity getLastHurtByMob() [abstract]
+    public abstract      void                               setTarget(net.minecraft.world.entity.LivingEntity) [abstract]
+    public abstract      net.minecraft.world.entity.LivingEntity getTarget() [abstract]
+
+==========================================================================
+⑥ GoalSelector —— 移除索敌 Goal 的操作接口
+  net.minecraft.world.entity.ai.goal.GoalSelector
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public               void                               <init>(java.util.function.Supplier)
+    public               void                               addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               java.util.Set                      getAvailableGoals()
+    static               void                               <clinit>()
+
+==========================================================================
+⑦ MerchantOffer —— 交易与补货
+  net.minecraft.world.item.trading.MerchantOffer
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 字段 --
+    public static final      CODEC                                      com.mojang.serialization.Codec
+    public static final      STREAM_CODEC                               net.minecraft.network.codec.StreamCodec
+    private final            baseCostA                                  net.minecraft.world.item.trading.ItemCost
+    private final            costB                                      java.util.Optional
+    private final            result                                     net.minecraft.world.item.ItemStack
+    private                  uses                                       int
+    private final            maxUses                                    int
+    private final            rewardExp                                  boolean
+    private                  specialPriceDiff                           int
+    private                  demand                                     int
+    private final            priceMultiplier                            float
+    private final            xp                                         int
+
+  -- 方法 --
+    public               net.minecraft.world.item.ItemStack getBaseCostA()
+    public               net.minecraft.world.item.ItemStack getCostA()
+    public               net.minecraft.world.item.ItemStack getCostB()
+    public               net.minecraft.world.item.ItemStack getResult()
+    public               net.minecraft.world.item.ItemStack assemble()
+    public               int                                getUses()
+    public               void                               resetUses()
+    public               int                                getMaxUses()
+    public               void                               increaseUses()
+    public               boolean                            isOutOfStock()
+    public               void                               setToOutOfStock()
+
+==========================================================================
+⑧ MerchantOffers
+  net.minecraft.world.item.trading.MerchantOffers
+==========================================================================
+  extends   : java/util/ArrayList
+
+  -- 方法 --
+    public               void                               <init>()
+    public               net.minecraft.world.item.trading.MerchantOffer getRecipeFor(net.minecraft.world.item.ItemStack,net.minecraft.world.item.ItemStack,int)
+    static               void                               <clinit>()
+
+==========================================================================
+⑨ Brain —— Brain 系生物的改写接口
+  net.minecraft.world.entity.ai.Brain
+==========================================================================
+  extends   : java/lang/Object
+
+  -- 方法 --
+    public               java.util.Optional                 getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType)
+    public               java.util.Optional                 getMemoryInternal(net.minecraft.world.entity.ai.memory.MemoryModuleType)
+    public               void                               useDefaultActivity()
+    public               void                               removeAllBehaviors()
+
+==========================================================================
+完成
+==========================================================================

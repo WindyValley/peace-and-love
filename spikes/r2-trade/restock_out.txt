@@ -1,0 +1,96 @@
+====================================================================================
+R2 追加验证 —— 「每日补货」能否用原版机制直接表达
+====================================================================================
+
+【1】Villager 补货相关方法（官方 mappings）
+
+  void       restock                  -> gx
+  boolean    needsToRestock           -> gJ
+  boolean    shouldRestock            -> gy
+  void       catchUpDemand            -> gL
+  void       updateDemand             -> gM
+  void       resetNumberOfRestocks    -> gU
+
+【2】Villager 补货相关字段
+
+  long       lastRestockGameTime          -> cD
+  int        numberOfRestocksToday        -> cE
+  long       lastRestockCheckDayTime      -> cF
+
+【3】MerchantOffer 的字段（决定交易次数语义）
+
+  public static final    Codec          CODEC
+  public static final    StreamCodec    STREAM_CODEC
+  private final          ItemCost       baseCostA
+  private final          Optional       costB
+  private final          ItemStack      result
+  private                int            uses   ★ 交易次数核心
+  private final          int            maxUses   ★ 交易次数核心
+  private final          boolean        rewardExp
+  private                int            specialPriceDiff
+  private                int            demand
+  private final          float          priceMultiplier
+  private final          int            xp
+
+【4】MerchantOffer 交易次数相关方法
+
+  int        getUses              -> i
+  void       resetUses            -> j
+  int        getMaxUses           -> k
+  void       increaseUses         -> l
+  boolean    isOutOfStock         -> r
+  void       setToOutOfStock      -> s
+
+【5】Merchant 接口：abstract vs default
+
+  必须自己实现（abstract）：11 个
+     · lambda$openTradingScreen$0
+     · getTradingPlayer
+     · getOffers
+     · lambda$openTradingScreen$0
+     · lambda$openTradingScreen$0
+     · notifyTradeUpdated
+     · overrideXp
+     · overrideXp
+     · showProgressBar
+     · getNotifyTradeSound
+     · isClientSide
+
+  原版已给实现（default）：3 个  ← 白送
+     ✅ canRestock
+     ✅ lambda$openTradingScreen$0
+     ✅ lambda$openTradingScreen$0
+
+====================================================================================
+【6】结论
+====================================================================================
+
+  ✅ 用户的思路成立，而且比我先前的设计更简单。
+
+     原版已具备的机制：
+       MerchantOffer.uses / maxUses     交易次数计数
+       MerchantOffer.resetUses()        把 uses 清零 = 补货
+       MerchantOffer.isOutOfStock()     判断是否已售罄
+       Villager.restock()               批量补货
+       Villager.shouldRestock()         判断补货时机
+       Villager.lastRestockGameTime     上次补货的游戏时间
+       Villager.numberOfRestocksToday   当天已补货次数
+
+     所以：
+       maxUses = 1  +  每游戏日 restock() 一次
+       ≡ 「每天最多买到一次击杀能拿到的量」
+
+  ❌ 先前设想的 Map<ItemId, lastTradeDay> 是多余的，撤销该设计。
+     实体 NBT 只需存一个 long: lastRestockDay。
+
+  实现要点：
+     ① 生成 offer 时 maxUses = 1（配置项 max_uses_per_day，默认 1）
+     ② result 数量 = 该掉落物「一次击杀最大掉落数」（R1 已能算出）
+     ③ 自实现 shouldRestock()：currentDay > lastRestockDay 则 restock()
+        补货周期作为配置项 restock_interval_days，默认 1
+     ④ 不照抄 Villager 的「每天 2 次」上限与 catchUpDemand 价格波动，
+        我们只要「清零 uses」这一件事，写个精简版
+
+  ⚠️ 注意：Villager.restock() 内部还耦合了 gossip / demand / 价格波动，
+     不能直接调用，需自己写 resetAllUses()。
+

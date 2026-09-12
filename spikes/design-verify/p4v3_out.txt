@@ -1,0 +1,70 @@
+==============================================================================
+P4 v3 —— 与本模组有交集的 2 个生物的冲突分析
+==============================================================================
+
+危险方法 forgetCurrentTargetAndRefreshUniversalAnger 的混淆名：['ae_']
+（该方法有 universal anger 语义 = 对所有玩家记仇，
+  会违反本模组「仇恨不扩散到其他玩家」的需求）
+
+==============================================================================
+■ 末影人  (EnderMan)  混淆名 cjt
+==============================================================================
+
+  覆写的 NeutralMob 方法（5）：
+      getPersistentAngerTarget()
+      getRemainingPersistentAngerTime()
+      setPersistentAngerTarget(java.util.UUID)
+      setRemainingPersistentAngerTime(int)
+      startPersistentAngerTimer()
+
+  自有 anger 相关字段：
+      （无）
+
+  引用 forgetCurrentTargetAndRefreshUniversalAnger：
+      ✅ 否
+
+  特殊行为方法（本模组需注意）：
+      void                       addAdditionalSaveData(net.minecraft.nbt.CompoundTag)
+      void                       customServerAiStep()
+      SoundEvent                 getHurtSound(net.minecraft.world.damagesource.DamageSource)
+      boolean                    hurt(net.minecraft.world.damagesource.DamageSource,float)
+      boolean                    hurtWithCleanWater(net.minecraft.world.damagesource.DamageSource,net.minecraft.world.entity.projectile.ThrownPotion,float)
+      boolean                    isLookingAtMe(net.minecraft.world.entity.player.Player)
+      void                       setBeingStaredAt()
+      void                       setTarget(net.minecraft.world.entity.LivingEntity)
+
+==============================================================================
+■ 僵尸猪灵  (ZombifiedPiglin)  混淆名 cky
+==============================================================================
+
+  覆写的 NeutralMob 方法（5）：
+      getPersistentAngerTarget()
+      getRemainingPersistentAngerTime()
+      setPersistentAngerTarget(java.util.UUID)
+      setRemainingPersistentAngerTime(int)
+      startPersistentAngerTimer()
+
+  自有 anger 相关字段：
+      （无）
+
+  引用 forgetCurrentTargetAndRefreshUniversalAnger：
+      ✅ 否
+
+  特殊行为方法（本模组需注意）：
+      void                       addAdditionalSaveData(net.minecraft.nbt.CompoundTag)
+      void                       customServerAiStep()
+      SoundEvent                 getHurtSound(net.minecraft.world.damagesource.DamageSource)
+      void                       setTarget(net.minecraft.world.entity.LivingEntity)
+
+==============================================================================
+结论
+==============================================================================
+
+  本模组 38 个已适配生物中，仅 2 个原版实现了 NeutralMob：
+      · minecraft:enderman         （Goal 系）
+      · minecraft:zombified_piglin （Goal 系）
+
+  ⚠️ 注意：这 2 个都是 **Goal 系**，不是先前 ADR-004 中所说的
+     「猪灵/猪灵蛮兵/疣猪兽/僵尸疣猪兽 4 个 Brain 系生物」。
+     ADR-004 的 P4 描述有误，需要修正。
+

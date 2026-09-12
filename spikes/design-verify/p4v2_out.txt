@@ -1,0 +1,46 @@
+==============================================================================
+P4 v2 —— NeutralMob 继承链与全量扫描
+==============================================================================
+
+NeutralMob 混淆名：btt
+
+==============================================================================
+① Brain 系 6 生物 —— 沿继承链检查
+==============================================================================
+  猪灵         ❌ 未实现（父类 AbstractPiglin）
+  猪灵蛮兵       ❌ 未实现（父类 AbstractPiglin）
+  猪灵基类       ❌ 未实现（父类 Monster）
+  疣猪兽        ❌ 未实现（父类 Animal）
+  僵尸疣猪兽      ❌ 未实现（父类 Monster）
+  监守者        ❌ 未实现（父类 Monster）
+  旋风人        ❌ 未实现（父类 Monster）
+
+==============================================================================
+② 全量扫描 —— 原版中所有实现 NeutralMob 的实体
+==============================================================================
+
+  直接实现 NeutralMob 的类（6 个）：
+      net.minecraft.world.entity.animal.Bee
+      net.minecraft.world.entity.animal.IronGolem
+      net.minecraft.world.entity.animal.PolarBear
+      net.minecraft.world.entity.animal.Wolf
+      net.minecraft.world.entity.monster.EnderMan
+      net.minecraft.world.entity.monster.ZombifiedPiglin
+
+==============================================================================
+③ 与本模组 38 个已适配生物的交集
+==============================================================================
+
+  ⚠️ 交集 1 个 —— 这些生物需检查冲突：
+      zombified_piglin         net.minecraft.world.entity.monster.ZombifiedPiglin
+
+  （参考）实现 NeutralMob 但不在适配列表的：
+      bee                      Bee
+      iron_golem               IronGolem
+      polar_bear               PolarBear
+      wolf                     Wolf
+      ender_man                EnderMan
+
+==============================================================================
+完成
+==============================================================================

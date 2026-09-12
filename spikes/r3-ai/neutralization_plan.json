@@ -1,0 +1,167 @@
+{
+  "mc_version": "1.21.1",
+  "goal_strategy": [
+    {
+      "id": "zombie",
+      "zh": "僵尸"
+    },
+    {
+      "id": "zombie_villager",
+      "zh": "僵尸村民"
+    },
+    {
+      "id": "husk",
+      "zh": "尸壳"
+    },
+    {
+      "id": "drowned",
+      "zh": "溺尸"
+    },
+    {
+      "id": "zombified_piglin",
+      "zh": "僵尸猪灵"
+    },
+    {
+      "id": "skeleton",
+      "zh": "骷髅"
+    },
+    {
+      "id": "wither_skeleton",
+      "zh": "凋灵骷髅"
+    },
+    {
+      "id": "stray",
+      "zh": "流浪者"
+    },
+    {
+      "id": "bogged",
+      "zh": "沼骸"
+    },
+    {
+      "id": "giant",
+      "zh": "巨人(未生成)"
+    },
+    {
+      "id": "spider",
+      "zh": "蜘蛛"
+    },
+    {
+      "id": "cave_spider",
+      "zh": "洞穴蜘蛛"
+    },
+    {
+      "id": "creeper",
+      "zh": "苦力怕"
+    },
+    {
+      "id": "ghast",
+      "zh": "恶魂"
+    },
+    {
+      "id": "blaze",
+      "zh": "烈焰人"
+    },
+    {
+      "id": "witch",
+      "zh": "女巫"
+    },
+    {
+      "id": "slime",
+      "zh": "史莱姆"
+    },
+    {
+      "id": "magma_cube",
+      "zh": "岩浆怪"
+    },
+    {
+      "id": "enderman",
+      "zh": "末影人"
+    },
+    {
+      "id": "endermite",
+      "zh": "末影螨"
+    },
+    {
+      "id": "guardian",
+      "zh": "守卫者"
+    },
+    {
+      "id": "elder_guardian",
+      "zh": "远古守卫者"
+    },
+    {
+      "id": "illusioner",
+      "zh": "幻术师(未生成)"
+    },
+    {
+      "id": "ravager",
+      "zh": "劫掠兽"
+    },
+    {
+      "id": "silverfish",
+      "zh": "蠹虫"
+    }
+  ],
+  "brain_strategy": [
+    {
+      "id": "piglin",
+      "zh": "猪灵"
+    },
+    {
+      "id": "piglin_brute",
+      "zh": "猪灵蛮兵"
+    },
+    {
+      "id": "hoglin",
+      "zh": "疣猪兽"
+    },
+    {
+      "id": "zoglin",
+      "zh": "僵尸疣猪兽"
+    },
+    {
+      "id": "warden",
+      "zh": "监守者"
+    },
+    {
+      "id": "breeze",
+      "zh": "旋风人"
+    }
+  ],
+  "user_whitelist": [
+    {
+      "id": "shulker",
+      "zh": "潜影贝"
+    },
+    {
+      "id": "phantom",
+      "zh": "幻翼"
+    },
+    {
+      "id": "pillager",
+      "zh": "掠夺者"
+    },
+    {
+      "id": "vindicator",
+      "zh": "卫道士"
+    },
+    {
+      "id": "evoker",
+      "zh": "唤魔者"
+    },
+    {
+      "id": "vex",
+      "zh": "恼鬼"
+    }
+  ],
+  "boss_skip": [
+    {
+      "id": "ender_dragon",
+      "zh": "末影龙"
+    },
+    {
+      "id": "wither",
+      "zh": "凋灵"
+    }
+  ]
+}

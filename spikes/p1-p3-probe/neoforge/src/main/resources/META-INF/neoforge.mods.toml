@@ -1,0 +1,36 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "peaceandlove"
+version = "${version}"
+displayName = "Peace And Love (P1/P3 Probe)"
+authors = "WindyValley"
+description = '''
+Design-phase probe for verifying Merchant interface injection on NeoForge.
+'''
+
+[[mixins]]
+config = "peaceandlove-common.mixins.json"
+
+[[dependencies.peaceandlove]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.peaceandlove]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.peaceandlove]]
+modId = "architectury"
+type = "required"
+versionRange = "[13.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

@@ -1,0 +1,100 @@
+====================================================================================================
+R3 SPIKE v2 — 1.21.1 主动敌对生物的 AI 系统判定（修正版）
+====================================================================================================
+
+判据修正：
+  ✗ v1 错误：把 customServerAiStep 当 Brain 标志
+             → 末影人/烈焰人/幻翼/卫道士/唤魔者/凋灵 被误判为 Brain 或 MIXED
+  ✓ v2 正确：Brain ⇔ 覆写 makeBrain() 或 brainProvider()
+             customServerAiStep 只是 tick 钩子，Goal 生物同样大量使用
+
+生物               ID             AI系统    处理        说明                                    
+----------------------------------------------------------------------------------------------------
+僵尸               zombie         GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+僵尸村民             zombie_villager GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+尸壳               husk           GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+溺尸               drowned        GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+僵尸猪灵             zombified_piglin GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+骷髅               skeleton       GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+凋灵骷髅             wither_skeleton GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+流浪者              stray          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+沼骸               bogged         GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+巨人(未生成)          giant          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+蜘蛛               spider         GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+洞穴蜘蛛             cave_spider    GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+苦力怕              creeper        GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+恶魂               ghast          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+烈焰人              blaze          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+女巫               witch          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+史莱姆              slime          GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+岩浆怪              magma_cube     GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+末影人              enderman       GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+末影螨              endermite      GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+潜影贝              shulker        GOAL    白名单       用户指定保持原版敌对
+守卫者              guardian       GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+远古守卫者            elder_guardian GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+幻翼               phantom        GOAL    白名单       用户指定保持原版敌对
+掠夺者              pillager       GOAL    白名单       用户指定保持原版敌对
+卫道士              vindicator     GOAL    白名单       用户指定保持原版敌对
+唤魔者              evoker         GOAL    白名单       用户指定保持原版敌对
+恼鬼               vex            GOAL    白名单       用户指定保持原版敌对
+幻术师(未生成)         illusioner     GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+劫掠兽              ravager        GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+猪灵               piglin         BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+猪灵蛮兵             piglin_brute   BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+疣猪兽              hoglin         BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+僵尸疣猪兽            zoglin         BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+监守者              warden         BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+旋风人              breeze         BRAIN   Brain策略   需 Brain/Behavior 改写，与 Goal 完全不同的实现路径
+蠹虫               silverfish     GOAL    Goal策略    移除 NearestAttackableTargetGoal，保留 HurtByTargetGoal
+末影龙              ender_dragon   GOAL    跳过        Boss，专属 AI（Phase/弹幕），不用标准索敌 Goal
+凋灵               wither         GOAL    跳过        Boss，专属 AI（Phase/弹幕），不用标准索敌 Goal
+
+====================================================================================================
+中立化实现分组（决定 dev 阶段工作量）
+====================================================================================================
+
+  ① Goal 策略 —— 共 25 个（主体工作，一套代码覆盖）
+     僵尸              僵尸村民            尸壳              溺尸              僵尸猪灵          
+     骷髅              凋灵骷髅            流浪者             沼骸              巨人(未生成)       
+     蜘蛛              洞穴蜘蛛            苦力怕             恶魂              烈焰人           
+     女巫              史莱姆             岩浆怪             末影人             末影螨           
+     守卫者             远古守卫者           幻术师(未生成)        劫掠兽             蠹虫            
+
+  ② Brain 策略 —— 共 6 个（★ 独立实现路径，工作量翻倍点）
+     猪灵              猪灵蛮兵            疣猪兽             僵尸疣猪兽           监守者           
+     旋风人           
+
+  ③ 用户白名单 —— 共 6 个（保持原版敌对，零工作量）
+     潜影贝             幻翼              掠夺者             卫道士             唤魔者             恼鬼            
+
+  ④ 天然跳过 —— 共 2 个（Boss 专属 AI，中立化机制不作用）
+     末影龙             凋灵            
+
+====================================================================================================
+R3 结论
+====================================================================================================
+
+  ✅ 判定完成，工作量已量化：
+       Goal 策略  25 个 —— 主体，一套 Mixin + 一个 Goal 移除工具类即可
+       Brain 策略  6 个 —— 需第二套实现（Behavior 改写）
+       白名单      6 个 —— 零成本
+       Boss 跳过   2 个 —— 零成本
+
+  ★ 关键发现（影响 v1.0 范围决策）：
+     Brain 系生物中，会主动攻击玩家的是：
+       • 猪灵 / 猪灵蛮兵 —— 玩家穿金装即中立，本就有中立机制
+       • 疣猪兽 / 僵尸疣猪兽 —— 疣猪兽原版已可被驯化型互动
+       • 监守者 —— 建议列入白名单（其设计核心是震动侦测，中立化等于废掉）
+       • 旋风人 —— ⚠️ 1.21 试炼密室核心敌人，玩家会期待它可中立化
+       • 远古守卫者 —— 海底神殿守卫
+
+  💡 建议 v1.0 范围（待你确认）：
+     方案 A（保守）：v1.0 只做 Goal 策略的 25 个，Brain 系全部列入默认白名单，
+                     在模组说明中如实声明，v1.1 再补 Brain 支持
+     方案 B（完整）：v1.0 同时做两套策略，工作量增加约 40%，
+                     但覆盖旋风人等玩家期待的生物
+
+  ⚠️ 监守者无论哪个方案都建议进白名单（震动机制 + 无敌属性，中立化无意义）
+
+[*] 已保存: D:\Coding\projects\peace-and-love\spikes\r3-ai\neutralization_plan.json

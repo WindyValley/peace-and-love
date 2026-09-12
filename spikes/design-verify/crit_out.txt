@@ -1,0 +1,177 @@
+
+==========================================================================
+问题 1 —— GoalSelector 的完整 API（是否有 removeGoal？）
+  net.minecraft.world.entity.ai.goal.GoalSelector
+==========================================================================
+  -- 全部方法 --
+    public               void                                   <init>(java.util.function.Supplier)
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    private static       void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    private static       void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               java.util.Set                          getAvailableGoals()
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               java.util.Set                          getAvailableGoals()
+    public               void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    private static       void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    private static       void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    private static       void                                   addGoal(int,net.minecraft.world.entity.ai.goal.Goal)
+    static               void                                   <clinit>()
+
+==========================================================================
+问题 1b —— WrappedGoal（getAvailableGoals 返回的元素类型）
+  net.minecraft.world.entity.ai.goal.WrappedGoal
+==========================================================================
+  -- 全部方法 --
+    public               void                                   <init>(int,net.minecraft.world.entity.ai.goal.Goal)
+    public               boolean                                canBeReplacedBy(net.minecraft.world.entity.ai.goal.WrappedGoal)
+    public               boolean                                canUse()
+    public               boolean                                canContinueToUse()
+    public               boolean                                isInterruptable()
+    public               void                                   start()
+    public               void                                   stop()
+    public               boolean                                requiresUpdateEveryTick()
+    protected            boolean                                canBeReplacedBy(net.minecraft.world.entity.ai.goal.WrappedGoal)
+    public               boolean                                canBeReplacedBy(net.minecraft.world.entity.ai.goal.WrappedGoal)
+    public               boolean                                canBeReplacedBy(net.minecraft.world.entity.ai.goal.WrappedGoal)
+    public               java.util.EnumSet                      getFlags()
+    public               boolean                                isRunning()
+    public               int                                    getPriority()
+    public               net.minecraft.world.entity.ai.goal.Goal getGoal()
+    public               boolean                                equals(java.lang.Object)
+    public               int                                    hashCode()
+
+==========================================================================
+问题 2a —— Entity 的 hurt 系方法
+  net.minecraft.world.entity.Entity
+==========================================================================
+  -- 全部方法 --
+    public               void                                   lavaHurt()
+    protected            void                                   markHurt()
+    public               boolean                                isInvulnerable()
+    public               net.minecraft.world.damagesource.DamageSources damageSources()
+
+==========================================================================
+问题 2b —— LivingEntity 的 hurt 系方法
+  net.minecraft.world.entity.LivingEntity
+==========================================================================
+  -- 全部方法 --
+    public               net.minecraft.world.entity.LivingEntity getLastHurtByMob()
+    public               int                                    getLastHurtByMobTimestamp()
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               net.minecraft.world.entity.LivingEntity getLastHurtMob()
+    public               int                                    getLastHurtMobTimestamp()
+    public               void                                   setLastHurtMob(net.minecraft.world.entity.Entity)
+    protected            void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public static        void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               net.minecraft.world.damagesource.DamageSource getLastDamageSource()
+    public               boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    protected            boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    public               float                                  getHurtDir()
+    protected            void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    private              void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    protected            void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    protected            void                                   hurtCurrentlyUsedShield(float)
+    protected            boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    protected            void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    private              void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtMob(net.minecraft.world.entity.Entity)
+    private              boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    private              void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    protected            boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    protected            void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+    public               boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    public               boolean                                isDamageSourceBlocked(net.minecraft.world.damagesource.DamageSource)
+    private              void                                   setLastHurtByPlayer(net.minecraft.world.entity.player.Player)
+
+==========================================================================
+问题 2c —— Mob 的 hurt 系方法
+  net.minecraft.world.entity.Mob
+==========================================================================
+  -- 全部方法 --
+    protected            void                                   playHurtSound(net.minecraft.world.damagesource.DamageSource)
+    public               void                                   playHurtSound(net.minecraft.world.damagesource.DamageSource)
+    private              double                                 getApproximateAttackDamageWithItem(net.minecraft.world.item.ItemStack)
+
+==========================================================================
+问题 3a —— Player.openTradingScreen
+  net.minecraft.world.entity.player.Player
+==========================================================================
+  -- 全部方法 --
+
+==========================================================================
+问题 3b —— AbstractVillager 的交易入口
+  net.minecraft.world.entity.npc.AbstractVillager
+==========================================================================
+  -- 全部方法 --
+    public               net.minecraft.world.entity.player.Player getTradingPlayer()
+    public               boolean                                isTrading()
+    protected abstract   void                                   rewardTradeXp(net.minecraft.world.item.trading.MerchantOffer) [abstract]
+    public               void                                   notifyTradeUpdated(net.minecraft.world.item.ItemStack)
+    public               net.minecraft.sounds.SoundEvent        getNotifyTradeSound()
+    protected            net.minecraft.sounds.SoundEvent        getTradeUpdatedSound(boolean)
+    public               void                                   rewardTradeXp(net.minecraft.world.item.trading.MerchantOffer)
+    protected            void                                   stopTrading()
+    public               net.minecraft.sounds.SoundEvent        getTradeUpdatedSound(boolean)
+    protected abstract   void                                   updateTrades() [abstract]
+    private              void                                   rewardTradeXp(net.minecraft.world.item.trading.MerchantOffer)
+
+==========================================================================
+补充 a —— HurtByTargetGoal（受击回击，要保留的）
+  net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
+==========================================================================
+  -- 全部方法 --
+    public               void                                   <init>(net.minecraft.world.entity.PathfinderMob,java.lang.Class[])
+    public               boolean                                canUse()
+    public               net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal setAlertOthers(java.lang.Class[])
+    public               void                                   start()
+    protected            void                                   alertOthers()
+    protected            net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal setAlertOthers(java.lang.Class[])
+    static               void                                   <clinit>()
+
+==========================================================================
+补充 b —— NearestAttackableTargetGoal（主动索敌，要移除的）
+  net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
+==========================================================================
+  -- 全部方法 --
+    public               void                                   <init>(net.minecraft.world.entity.Mob,java.lang.Class,boolean)
+    public               void                                   <init>(net.minecraft.world.entity.Mob,java.lang.Class,boolean)
+    public               void                                   <init>(net.minecraft.world.entity.Mob,java.lang.Class,boolean)
+    public               void                                   <init>(net.minecraft.world.entity.Mob,java.lang.Class,boolean)
+    public               boolean                                canUse()
+    protected            net.minecraft.world.phys.AABB          getTargetSearchArea(double)
+    protected            void                                   findTarget()
+    public               void                                   start()
+    public               net.minecraft.world.phys.AABB          getTargetSearchArea(double)
+    private static       boolean                                canUse()
+
+==========================================================================
+补充 c —— TargetGoal 基类
+  net.minecraft.world.entity.ai.goal.target.TargetGoal
+==========================================================================
+  -- 全部方法 --
+    public               void                                   <init>(net.minecraft.world.entity.Mob,boolean)
+    public               void                                   <init>(net.minecraft.world.entity.Mob,boolean)
+    public               boolean                                canContinueToUse()
+    protected            double                                 getFollowDistance()
+    public               void                                   start()
+    public               void                                   stop()
+    protected            boolean                                canAttack(net.minecraft.world.entity.LivingEntity,net.minecraft.world.entity.ai.targeting.TargetingConditions)
+    private              boolean                                canAttack(net.minecraft.world.entity.LivingEntity,net.minecraft.world.entity.ai.targeting.TargetingConditions)
+    public               boolean                                canContinueToUse()
+
+==========================================================================
+完成
+==========================================================================

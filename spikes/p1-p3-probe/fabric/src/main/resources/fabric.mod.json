@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "peaceandlove",
+  "version": "${version}",
+  "name": "Peace And Love (P1/P3 Probe)",
+  "description": "Design-phase probe for verifying Merchant interface injection.",
+  "authors": ["WindyValley"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "default",
+        "value": "top.windyvalley.peaceandlove.fabric.ProbeFabric"
+      }
+    ]
+  },
+  "mixins": [
+    "peaceandlove-common.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.0"
+  }
+}

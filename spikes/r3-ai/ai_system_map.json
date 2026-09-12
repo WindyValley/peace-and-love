@@ -1,0 +1,546 @@
+{
+  "mc_version": "1.21.1",
+  "groups": {
+    "GOAL": [
+      "Zombie",
+      "Drowned",
+      "WitherSkeleton",
+      "Creeper",
+      "Spider",
+      "Silverfish",
+      "Endermite",
+      "Witch",
+      "Slime",
+      "Ghast",
+      "Guardian",
+      "Shulker",
+      "Vex",
+      "Pillager",
+      "Illusioner",
+      "Ravager",
+      "IronGolem",
+      "SnowGolem",
+      "Wolf",
+      "PolarBear",
+      "Llama",
+      "TraderLlama",
+      "Panda",
+      "Dolphin",
+      "Turtle"
+    ],
+    "BRAIN": [
+      "ElderGuardian",
+      "Goat",
+      "Armadillo",
+      "Frog",
+      "Piglin",
+      "PiglinBrute",
+      "Hoglin",
+      "Zoglin",
+      "Warden",
+      "Breeze",
+      "Axolotl",
+      "Allay",
+      "Villager",
+      "Sniffer",
+      "Tadpole"
+    ],
+    "MIXED": [
+      "ZombifiedPiglin",
+      "EnderMan",
+      "Blaze",
+      "Phantom",
+      "Vindicator",
+      "Evoker",
+      "Bee",
+      "Rabbit",
+      "Camel",
+      "WitherBoss"
+    ],
+    "INHERIT": [
+      "ZombieVillager",
+      "Husk",
+      "Skeleton",
+      "Stray",
+      "Bogged",
+      "CaveSpider",
+      "MagmaCube",
+      "Giant",
+      "EnderDragon"
+    ]
+  },
+  "detail": [
+    {
+      "entity": "Zombie",
+      "obf": "ckw",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals,addBehaviourGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "ZombieVillager",
+      "obf": "ckx",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Zombie"
+    },
+    {
+      "entity": "Husk",
+      "obf": "cka",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Zombie"
+    },
+    {
+      "entity": "Drowned",
+      "obf": "cjr",
+      "verdict": "GOAL",
+      "goal_methods": "addBehaviourGoals",
+      "brain_methods": "-",
+      "super": "Zombie"
+    },
+    {
+      "entity": "ZombifiedPiglin",
+      "obf": "cky",
+      "verdict": "MIXED",
+      "goal_methods": "addBehaviourGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Zombie"
+    },
+    {
+      "entity": "Skeleton",
+      "obf": "ckl",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "AbstractSkeleton"
+    },
+    {
+      "entity": "WitherSkeleton",
+      "obf": "cku",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractSkeleton"
+    },
+    {
+      "entity": "Stray",
+      "obf": "ckp",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "AbstractSkeleton"
+    },
+    {
+      "entity": "Bogged",
+      "obf": "cjn",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "AbstractSkeleton"
+    },
+    {
+      "entity": "Creeper",
+      "obf": "cjp",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "Spider",
+      "obf": "cko",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "CaveSpider",
+      "obf": "cjo",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Spider"
+    },
+    {
+      "entity": "Silverfish",
+      "obf": "ckk",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "Endermite",
+      "obf": "cju",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "EnderMan",
+      "obf": "cjt",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Monster"
+    },
+    {
+      "entity": "Witch",
+      "obf": "ckt",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Raider"
+    },
+    {
+      "entity": "Slime",
+      "obf": "ckm",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Mob"
+    },
+    {
+      "entity": "MagmaCube",
+      "obf": "ckc",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Slime"
+    },
+    {
+      "entity": "Blaze",
+      "obf": "cjm",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Monster"
+    },
+    {
+      "entity": "Ghast",
+      "obf": "cjx",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "FlyingMob"
+    },
+    {
+      "entity": "Guardian",
+      "obf": "cjz",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "ElderGuardian",
+      "obf": "cjs",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "customServerAiStep",
+      "super": "Guardian"
+    },
+    {
+      "entity": "Shulker",
+      "obf": "ckj",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractGolem"
+    },
+    {
+      "entity": "Phantom",
+      "obf": "ckf",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "FlyingMob"
+    },
+    {
+      "entity": "Vex",
+      "obf": "ckr",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "Pillager",
+      "obf": "ckg",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractIllager"
+    },
+    {
+      "entity": "Vindicator",
+      "obf": "cks",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "AbstractIllager"
+    },
+    {
+      "entity": "Evoker",
+      "obf": "cjw",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "SpellcasterIllager"
+    },
+    {
+      "entity": "Illusioner",
+      "obf": "ckb",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "SpellcasterIllager"
+    },
+    {
+      "entity": "Ravager",
+      "obf": "cki",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Raider"
+    },
+    {
+      "entity": "Giant",
+      "obf": "cjy",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Monster"
+    },
+    {
+      "entity": "IronGolem",
+      "obf": "cfq",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractGolem"
+    },
+    {
+      "entity": "SnowGolem",
+      "obf": "cgc",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractGolem"
+    },
+    {
+      "entity": "Wolf",
+      "obf": "cgh",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "TamableAnimal"
+    },
+    {
+      "entity": "PolarBear",
+      "obf": "cfw",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Animal"
+    },
+    {
+      "entity": "Llama",
+      "obf": "chl",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "AbstractChestedHorse"
+    },
+    {
+      "entity": "TraderLlama",
+      "obf": "chq",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Llama"
+    },
+    {
+      "entity": "Panda",
+      "obf": "cft",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Animal"
+    },
+    {
+      "entity": "Bee",
+      "obf": "cff",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Dolphin",
+      "obf": "cfm",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "WaterAnimal"
+    },
+    {
+      "entity": "Rabbit",
+      "obf": "cfy",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Goat",
+      "obf": "che",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Turtle",
+      "obf": "cgf",
+      "verdict": "GOAL",
+      "goal_methods": "registerGoals",
+      "brain_methods": "-",
+      "super": "Animal"
+    },
+    {
+      "entity": "Armadillo",
+      "obf": "cgn",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Camel",
+      "obf": "cgv",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "makeBrain,brainProvider,customServerAiStep",
+      "super": "AbstractHorse"
+    },
+    {
+      "entity": "Frog",
+      "obf": "cgy",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Piglin",
+      "obf": "cln",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "AbstractPiglin"
+    },
+    {
+      "entity": "PiglinBrute",
+      "obf": "clq",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "AbstractPiglin"
+    },
+    {
+      "entity": "Hoglin",
+      "obf": "clh",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Zoglin",
+      "obf": "ckv",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Monster"
+    },
+    {
+      "entity": "Warden",
+      "obf": "cmb",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,getBrain,customServerAiStep",
+      "super": "Monster"
+    },
+    {
+      "entity": "Breeze",
+      "obf": "ckz",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Monster"
+    },
+    {
+      "entity": "Axolotl",
+      "obf": "cgq",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Allay",
+      "obf": "cgk",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "PathfinderMob"
+    },
+    {
+      "entity": "Villager",
+      "obf": "cmk",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "AbstractVillager"
+    },
+    {
+      "entity": "Sniffer",
+      "obf": "chv",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "Animal"
+    },
+    {
+      "entity": "Tadpole",
+      "obf": "chb",
+      "verdict": "BRAIN",
+      "goal_methods": "-",
+      "brain_methods": "makeBrain,brainProvider,getBrain,customServerAiStep",
+      "super": "AbstractFish"
+    },
+    {
+      "entity": "EnderDragon",
+      "obf": "cia",
+      "verdict": "INHERIT",
+      "goal_methods": "-",
+      "brain_methods": "-",
+      "super": "Mob"
+    },
+    {
+      "entity": "WitherBoss",
+      "obf": "ciu",
+      "verdict": "MIXED",
+      "goal_methods": "registerGoals",
+      "brain_methods": "customServerAiStep",
+      "super": "Monster"
+    }
+  ]
+}

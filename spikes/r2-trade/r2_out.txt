@@ -1,0 +1,160 @@
+==========================================================================================
+R2 SPIKE — 交易能力注入方案分析（1.21.1 真实字节码）
+==========================================================================================
+[*] 映射类数: 6148
+
+==========================================================================================
+【1】方案 A 的核心：Merchant 接口需要实现哪些方法？
+==========================================================================================
+  官方类名: net.minecraft.world.item.trading.Merchant
+  混淆类名: dbt
+  是接口: True
+
+  接口方法（官方名 → 混淆名）:
+    a      openTradingScreen(net.minecraft.world.entity.player.Player,net.minecraft.network.chat.Component,int) default  (可不覆写)
+    a      openTradingScreen(net.minecraft.world.entity.player.Player,net.minecraft.network.chat.Component,int) abstract ★必须实现
+    a      openTradingScreen(net.minecraft.world.entity.player.Player,net.minecraft.network.chat.Component,int) default  (可不覆写)
+    a      openTradingScreen(net.minecraft.world.entity.player.Player,net.minecraft.network.chat.Component,int) abstract ★必须实现
+    a      openTradingScreen(net.minecraft.world.entity.player.Player,net.minecraft.network.chat.Component,int) abstract ★必须实现
+    gk     getTradingPlayer()                             abstract ★必须实现
+    gm     getOffers()                                    abstract ★必须实现
+    gn     showProgressBar()                              abstract ★必须实现
+    go     getNotifyTradeSound()                          abstract ★必须实现
+    gs     isClientSide()                                 abstract ★必须实现
+    gw     canRestock()                                   default  (可不覆写)
+    n      notifyTradeUpdated(net.minecraft.world.item.ItemStack) abstract ★必须实现
+    t      overrideXp(int)                                abstract ★必须实现
+    t      overrideXp(int)                                abstract ★必须实现
+
+  ▸ 必须实现的 abstract 方法: 11 个
+  ▸ 有默认实现的方法:        3 个
+
+==========================================================================================
+【2】方案 A 的第二步：MerchantMenu 构造需要什么？
+==========================================================================================
+  net.minecraft.world.inventory.MerchantMenu → cre
+
+  构造器签名:
+    (ILcmw;)V
+    (ILcmw;Ldbt;)V
+
+  字段（private 需 Accessor 的用 ★ 标注）:
+    k      PAYMENT1_SLOT            int                                    public
+    l      PAYMENT2_SLOT            int                                    public
+    m      RESULT_SLOT              int                                    public
+    n      INV_SLOT_START           int                                    ★private
+    o      INV_SLOT_END             int                                    ★private
+    p      USE_ROW_SLOT_START       int                                    ★private
+    q      USE_ROW_SLOT_END         int                                    ★private
+    r      SELLSLOT1_X              int                                    ★private
+    s      SELLSLOT2_X              int                                    ★private
+    t      BUYSLOT_X                int                                    ★private
+    u      ROW_Y                    int                                    ★private
+    v      trader                   net.minecraft.world.item.trading.Mer   ★private
+    w      tradeContainer           net.minecraft.world.inventory.Mercha   ★private
+    x      merchantLevel            int                                    ★private
+    y      showProgressBar          boolean                                ★private
+    z      canRestock               boolean                                ★private
+
+==========================================================================================
+【3】原版参考：Villager 如何实现 Merchant？
+==========================================================================================
+
+  AbstractVillager → cmf
+    父类: bsl
+    实现接口: ['cmi', 'cmj', 'dbt']
+    ✅ 直接实现 Merchant
+
+  Villager → cmk
+    父类: cmf
+    实现接口: ['bud', 'cmm']
+
+==========================================================================================
+【4】注入目标：Mob 类的继承结构
+==========================================================================================
+  Mob                    → btp     父类=btn      接口数=3
+  PathfinderMob          → btw     父类=btp      接口数=0
+  Monster                → ckd     父类=btw      接口数=1
+  Zombie                 → ckw     父类=ckd      接口数=0
+
+==========================================================================================
+【5】方案 B：自建 Menu 需要哪些原版组件？
+==========================================================================================
+  AbstractContainerMenu                          → cpu     自建 Menu 的父类
+  MenuType                                       → crc     注册 MenuType
+  MerchantOffer                                  → dbu     复用交易报价数据结构
+  MerchantOffers                                 → dbv     报价列表
+  ContainerLevelAccess                           → cqg     服务端位置校验
+
+==========================================================================================
+【6】MerchantOffer 数据结构（定价结果的载体）
+==========================================================================================
+  net.minecraft.world.item.trading.MerchantOffer → dbu
+
+  字段:
+    a      CODEC                  com.mojang.serialization.Cod   public 
+    b      STREAM_CODEC           net.minecraft.network.codec.   public 
+    c      baseCostA              net.minecraft.world.item.tra   private
+    d      costB                  java.util.Optional             private
+    e      result                 net.minecraft.world.item.Ite   private
+    f      uses                   int                            private
+    g      maxUses                int                            private
+    h      rewardExp              boolean                        private
+    i      specialPriceDiff       int                            private
+    j      demand                 int                            private
+    k      priceMultiplier        float                          private
+    l      xp                     int                            private
+
+  构造器:
+    (Ldbs;Ljava/util/Optional;Lcuq;IIZIIFI)V
+    (Ldbs;Lcuq;IIF)V
+    (Ldbs;Ljava/util/Optional;Lcuq;IIF)V
+    (Ldbs;Ljava/util/Optional;Lcuq;IIIF)V
+    (Ldbs;Ljava/util/Optional;Lcuq;IIIFI)V
+    (Ldbu;)V
+
+==========================================================================================
+【7】R2 结论
+==========================================================================================
+
+  ── 方案 A：Mixin 注入 Merchant 接口到 Mob ──────────────────────
+    做法：@Mixin(Mob.class) + @Implements/接口注入，实现 Merchant 的全部 abstract 方法，
+          openTradingScreen 复用原版 MerchantMenu
+
+    ✅ 优点
+       • GUI 零工作量 —— 完全复用原版村民界面与网络同步
+       • 客户端可能无需装模组（走原版 Menu 与原版包）
+       • MerchantOffer 的价格/次数/补货语义原版已实现（含 uses/maxUses）
+
+    ❌ 缺点
+       • 需给 Mob 注入接口 —— Fabric 用 Mixin 接口注入，
+         NeoForge 需确认其 Mixin 配置与 AT (Access Transformer) 支持
+       • Mob 是极高频基类，注入影响所有生物（含友好生物），需运行时判定
+       • Architectury common 模块无法承载此注入（涉及混淆类字节码），
+         需在 fabric / neoforge 各自模块重复
+
+  ── 方案 B：自建 MenuType + 自定义网络包 ────────────────────────
+    做法：注册自己的 MenuType，写自己的 ContainerMenu + Screen，
+          用自定义包同步价格与交易结果
+
+    ✅ 优点
+       • 跨端一致 —— MenuType 注册在 Architectury 有统一 API，common 模块可承载大部分逻辑
+       • 完全掌控界面与校验逻辑（FR-2.2 强制关闭 + 退货更容易实现）
+       • 不污染 Mob 基类
+
+    ❌ 缺点
+       • 需自写 Screen（贴图 + 布局 + 滚动）
+       • 需自写网络包与同步逻辑
+       • 客户端必须安装模组
+
+  ── 建议（待 design 阶段最终裁定）─────────────────────────────
+    倾向 方案 B。理由：
+      1. 本模组已确定「双端 + 服务器」，客户端必装模组不是额外负担
+      2. FR-2.2 要求「交易中转敌对 → 强制关闭 + 退货」，自建 Menu 实现更干净
+      3. Architectury 的 MenuType 注册有统一 API，common 模块能承载主体逻辑，
+         而方案 A 的接口注入恰恰是 Architectury 无法屏蔽的部分
+      4. 长期可维护性：不动 Mob 基类，与其他模组冲突面小得多
+
+    ⚠️ 但方案 B 的 Screen 工作量需实际写一遍才能确认，
+       建议 design 阶段做一个最小可运行原型（真机打开界面）再最终定案
+

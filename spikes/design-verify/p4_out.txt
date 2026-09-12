@@ -1,0 +1,84 @@
+==============================================================================
+P4 —— 猪灵/疣猪兽的 NeutralMob 冲突检查
+==============================================================================
+
+NeutralMob 混淆名：btt
+NeutralMob 方法混淆映射：
+    addPersistentAngerSaveData                       -> ['a_']
+    forgetCurrentTargetAndRefreshUniversalAnger      -> ['ae_']
+    getPersistentAngerTarget                         -> ['b']
+    getRemainingPersistentAngerTime                  -> ['a']
+    isAngry                                          -> ['ad_']
+    playerDied                                       -> ['a_']
+    readPersistentAngerSaveData                      -> ['a']
+    setPersistentAngerTarget                         -> ['a']
+    setRemainingPersistentAngerTime                  -> ['a']
+    startPersistentAngerTimer                        -> ['c']
+    stopBeingAngry                                   -> ['Z_']
+    updatePersistentAnger                            -> ['a']
+
+==============================================================================
+逐个生物检查
+==============================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+■ 猪灵  (Piglin)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：['CrossbowAttackMob', 'InventoryCarrier']
+  父类：AbstractPiglin
+
+──────────────────────────────────────────────────────────────────────────────
+■ 猪灵蛮兵  (PiglinBrute)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：[]
+  父类：AbstractPiglin
+
+──────────────────────────────────────────────────────────────────────────────
+■ 疣猪兽  (Hoglin)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：['Enemy', 'HoglinBase']
+  父类：Animal
+
+──────────────────────────────────────────────────────────────────────────────
+■ 僵尸疣猪兽  (Zoglin)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：['Enemy', 'HoglinBase']
+  父类：Monster
+
+──────────────────────────────────────────────────────────────────────────────
+■ 监守者  (Warden)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：['VibrationSystem']
+  父类：Monster
+
+──────────────────────────────────────────────────────────────────────────────
+■ 旋风人  (Breeze)
+──────────────────────────────────────────────────────────────────────────────
+  实现 NeutralMob：❌ 否
+  接口列表：[]
+  父类：Monster
+
+==============================================================================
+Q4 —— 猪灵「穿金装中立」逻辑定位
+==============================================================================
+
+  PiglinAi:
+      void                   admireGoldItem(net.minecraft.world.entity.LivingEntity)
+      Optional               getAngerTarget(net.minecraft.world.entity.monster.piglin.AbstractPiglin)
+      boolean                isWearingGold(net.minecraft.world.entity.LivingEntity)
+      void                   setAngerTarget(net.minecraft.world.entity.monster.piglin.AbstractPiglin,net.minecraft.world.entity.LivingEntity)
+      void                   setAngerTargetIfCloserThanCurrent(net.minecraft.world.entity.monster.piglin.AbstractPiglin,net.minecraft.world.entity.LivingEntity)
+      void                   setAngerTargetToNearestTargetablePlayerIfFound(net.minecraft.world.entity.monster.piglin.AbstractPiglin,net.minecraft.world.entity.LivingEntity)
+      void                   stopHoldingOffHandItem(net.minecraft.world.entity.monster.piglin.Piglin,boolean)
+
+  Piglin:
+      void                   maybeWearArmor(net.minecraft.world.entity.EquipmentSlot,net.minecraft.world.item.ItemStack,net.minecraft.util.RandomSource)
+
+==============================================================================
+完成
+==============================================================================

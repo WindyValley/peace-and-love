@@ -1,0 +1,134 @@
+==============================================================================
+v1.0 已适配生物清单
+==============================================================================
+
+goal_system 原始 33 项
+  排除（v1.0 暂缓）：['ender_dragon']
+  → Goal 系 v1.0：32 项
+brain_system：6 项
+合计已适配：38 项
+
+默认白名单：7 项 → ['shulker', 'phantom', 'pillager', 'vindicator', 'evoker', 'vex', 'wither']
+
+==============================================================================
+Goal 系（32）
+==============================================================================
+   1. minecraft:blaze                    烈焰人       
+   2. minecraft:bogged                   沼骸        
+   3. minecraft:cave_spider              洞穴蜘蛛      
+   4. minecraft:creeper                  苦力怕       
+   5. minecraft:drowned                  溺尸        
+   6. minecraft:elder_guardian           远古守卫者     
+   7. minecraft:enderman                 末影人       
+   8. minecraft:endermite                末影螨       
+   9. minecraft:evoker                   唤魔者        🔒默认白名单 ⚠️特殊适配
+  10. minecraft:ghast                    恶魂        
+  11. minecraft:giant                    巨人        
+  12. minecraft:guardian                 守卫者       
+  13. minecraft:husk                     尸壳        
+  14. minecraft:illusioner               幻术师       
+  15. minecraft:magma_cube               岩浆怪       
+  16. minecraft:phantom                  幻翼         🔒默认白名单 ⚠️特殊适配
+  17. minecraft:pillager                 掠夺者        🔒默认白名单 ⚠️特殊适配
+  18. minecraft:ravager                  劫掠兽       
+  19. minecraft:shulker                  潜影贝        🔒默认白名单 ⚠️特殊适配
+  20. minecraft:silverfish               蠹虫        
+  21. minecraft:skeleton                 骷髅        
+  22. minecraft:slime                    史莱姆       
+  23. minecraft:spider                   蜘蛛        
+  24. minecraft:stray                    流浪者       
+  25. minecraft:vex                      恼鬼         🔒默认白名单 ⚠️特殊适配
+  26. minecraft:vindicator               卫道士        🔒默认白名单 ⚠️特殊适配
+  27. minecraft:witch                    女巫        
+  28. minecraft:wither                   凋灵         🔒默认白名单 ⚠️特殊适配
+  29. minecraft:wither_skeleton          凋灵骷髅      
+  30. minecraft:zombie                   僵尸        
+  31. minecraft:zombie_villager          僵尸村民      
+  32. minecraft:zombified_piglin         僵尸猪灵      
+
+==============================================================================
+Brain 系（6）
+==============================================================================
+   1. minecraft:breeze                   旋风人       
+   2. minecraft:hoglin                   疣猪兽       
+   3. minecraft:piglin                   猪灵        
+   4. minecraft:piglin_brute             猪灵蛮兵      
+   5. minecraft:warden                   监守者       
+   6. minecraft:zoglin                   僵尸疣猪兽     
+
+==============================================================================
+特殊适配说明（8）
+==============================================================================
+  shulker            固定在方块上，攻击方式为发射导弹；无移动 Goal，索敌逻辑内嵌于 ShulkerAttackGoal  
+  phantom            飞行生物，用 PhantomAttackPlayerTargetGoal 而非标准 NearestAttackableTargetGoal；且有「玩家不睡觉才刷新」的生成条件  
+  pillager           属于袭击（Raid）系统，中立化会影响袭击事件；需处理 Raider.canJoinRaid  
+  vindicator         同属袭击系统；另有 Johnny 名牌特殊行为（攻击一切生物）  
+  evoker             同属袭击系统；召唤恼鬼 / 唤魔尖牙，中立后召唤物行为需一并处理  
+  vex                由唤魔者召唤，生命周期受召唤者控制；有 owner 概念，中立化需处理 owner 关系  
+  ender_dragon       Phase 系统（DragonPhaseInstance），无标准 targetSelector；且交易 UI 对 Boss 无意义  ⏸ v1.0 暂缓
+  wither             自有弹幕逻辑与 targetSelector，但 target 选择在 customServerAiStep 内硬编码  
+
+==============================================================================
+Java 代码常量（供 dev 阶段直接使用）
+==============================================================================
+
+public final class AdaptedMobRegistry {
+    /** Goal 系：通过 goalSelector.removeAllGoals(Predicate) 移除主动索敌 */
+    public static final Set<EntityType<?>> GOAL_BASED = Set.of(
+        EntityType.BLAZE,   // 烈焰人
+        EntityType.BOGGED,   // 沼骸
+        EntityType.CAVE_SPIDER,   // 洞穴蜘蛛
+        EntityType.CREEPER,   // 苦力怕
+        EntityType.DROWNED,   // 溺尸
+        EntityType.ELDER_GUARDIAN,   // 远古守卫者
+        EntityType.ENDERMAN,   // 末影人
+        EntityType.ENDERMITE,   // 末影螨
+        EntityType.EVOKER,   // 唤魔者
+        EntityType.GHAST,   // 恶魂
+        EntityType.GIANT,   // 巨人
+        EntityType.GUARDIAN,   // 守卫者
+        EntityType.HUSK,   // 尸壳
+        EntityType.ILLUSIONER,   // 幻术师
+        EntityType.MAGMA_CUBE,   // 岩浆怪
+        EntityType.PHANTOM,   // 幻翼
+        EntityType.PILLAGER,   // 掠夺者
+        EntityType.RAVAGER,   // 劫掠兽
+        EntityType.SHULKER,   // 潜影贝
+        EntityType.SILVERFISH,   // 蠹虫
+        EntityType.SKELETON,   // 骷髅
+        EntityType.SLIME,   // 史莱姆
+        EntityType.SPIDER,   // 蜘蛛
+        EntityType.STRAY,   // 流浪者
+        EntityType.VEX,   // 恼鬼
+        EntityType.VINDICATOR,   // 卫道士
+        EntityType.WITCH,   // 女巫
+        EntityType.WITHER,   // 凋灵
+        EntityType.WITHER_SKELETON,   // 凋灵骷髅
+        EntityType.ZOMBIE,   // 僵尸
+        EntityType.ZOMBIE_VILLAGER,   // 僵尸村民
+        EntityType.ZOMBIFIED_PIGLIN,   // 僵尸猪灵
+    );
+
+    /** Brain 系：擦除 ANGRY_AT / ATTACK_TARGET 记忆 */
+    public static final Set<EntityType<?>> BRAIN_BASED = Set.of(
+        EntityType.BREEZE,   // 旋风人
+        EntityType.HOGLIN,   // 疣猪兽
+        EntityType.PIGLIN,   // 猪灵
+        EntityType.PIGLIN_BRUTE,   // 猪灵蛮兵
+        EntityType.WARDEN,   // 监守者
+        EntityType.ZOGLIN,   // 僵尸疣猪兽
+    );
+
+    /** 默认白名单：已适配但默认保持原版行为，管理员可移出 */
+    public static final Set<EntityType<?>> DEFAULT_WHITELIST = Set.of(
+        EntityType.EVOKER,   // 唤魔者
+        EntityType.PHANTOM,   // 幻翼
+        EntityType.PILLAGER,   // 掠夺者
+        EntityType.SHULKER,   // 潜影贝
+        EntityType.VEX,   // 恼鬼
+        EntityType.VINDICATOR,   // 卫道士
+        EntityType.WITHER,   // 凋灵
+    );
+}
+
+✅ 已写入 adapted_mobs_v1.json

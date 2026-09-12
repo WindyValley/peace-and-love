@@ -1,0 +1,96 @@
+[*] 下载 server.jar (51 MB) ...
+[*] server.jar: 51627615 bytes
+[*] 解析官方 mappings ...
+[*] 映射类数: 6148
+[*] bundler 结构，内层 jar: ['META-INF/versions/1.21.1/server-1.21.1.jar']
+
+============================================================================================
+R3 SPIKE — 1.21.1 生物 AI 系统判定（基于官方 mappings + 字节码方法表）
+============================================================================================
+生物                   混淆名      判定        Goal方法                     Brain方法                父类
+--------------------------------------------------------------------------------------------
+Zombie               ckw      GOAL      registerGoals,addBehaviourGoals -                      Monster
+ZombieVillager       ckx      INHERIT   -                          -                      Zombie
+Husk                 cka      INHERIT   -                          -                      Zombie
+Drowned              cjr      GOAL      addBehaviourGoals          -                      Zombie
+ZombifiedPiglin      cky      MIXED     addBehaviourGoals          customServerAiStep     Zombie
+Skeleton             ckl      INHERIT   -                          -                      AbstractSkeleton
+WitherSkeleton       cku      GOAL      registerGoals              -                      AbstractSkeleton
+Stray                ckp      INHERIT   -                          -                      AbstractSkeleton
+Bogged               cjn      INHERIT   -                          -                      AbstractSkeleton
+Creeper              cjp      GOAL      registerGoals              -                      Monster
+Spider               cko      GOAL      registerGoals              -                      Monster
+CaveSpider           cjo      INHERIT   -                          -                      Spider
+Silverfish           ckk      GOAL      registerGoals              -                      Monster
+Endermite            cju      GOAL      registerGoals              -                      Monster
+EnderMan             cjt      MIXED     registerGoals              customServerAiStep     Monster
+Witch                ckt      GOAL      registerGoals              -                      Raider
+Slime                ckm      GOAL      registerGoals              -                      Mob
+MagmaCube            ckc      INHERIT   -                          -                      Slime
+Blaze                cjm      MIXED     registerGoals              customServerAiStep     Monster
+Ghast                cjx      GOAL      registerGoals              -                      FlyingMob
+Guardian             cjz      GOAL      registerGoals              -                      Monster
+ElderGuardian        cjs      BRAIN     -                          customServerAiStep     Guardian
+Shulker              ckj      GOAL      registerGoals              -                      AbstractGolem
+Phantom              ckf      MIXED     registerGoals              customServerAiStep     FlyingMob
+Vex                  ckr      GOAL      registerGoals              -                      Monster
+Pillager             ckg      GOAL      registerGoals              -                      AbstractIllager
+Vindicator           cks      MIXED     registerGoals              customServerAiStep     AbstractIllager
+Evoker               cjw      MIXED     registerGoals              customServerAiStep     SpellcasterIllager
+Illusioner           ckb      GOAL      registerGoals              -                      SpellcasterIllager
+Ravager              cki      GOAL      registerGoals              -                      Raider
+Giant                cjy      INHERIT   -                          -                      Monster
+IronGolem            cfq      GOAL      registerGoals              -                      AbstractGolem
+SnowGolem            cgc      GOAL      registerGoals              -                      AbstractGolem
+Wolf                 cgh      GOAL      registerGoals              -                      TamableAnimal
+PolarBear            cfw      GOAL      registerGoals              -                      Animal
+Llama                chl      GOAL      registerGoals              -                      AbstractChestedHorse
+TraderLlama          chq      GOAL      registerGoals              -                      Llama
+Panda                cft      GOAL      registerGoals              -                      Animal
+Bee                  cff      MIXED     registerGoals              customServerAiStep     Animal
+Dolphin              cfm      GOAL      registerGoals              -                      WaterAnimal
+Rabbit               cfy      MIXED     registerGoals              customServerAiStep     Animal
+Goat                 che      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Animal
+Turtle               cgf      GOAL      registerGoals              -                      Animal
+Armadillo            cgn      BRAIN     -                          makeBrain,brainProvider,customServerAiStep Animal
+Camel                cgv      MIXED     registerGoals              makeBrain,brainProvider,customServerAiStep AbstractHorse
+Frog                 cgy      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Animal
+Piglin               cln      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep AbstractPiglin
+PiglinBrute          clq      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep AbstractPiglin
+Hoglin               clh      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Animal
+Zoglin               ckv      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Monster
+Warden               cmb      BRAIN     -                          makeBrain,getBrain,customServerAiStep Monster
+Breeze               ckz      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Monster
+Axolotl              cgq      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Animal
+Allay                cgk      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep PathfinderMob
+Villager             cmk      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep AbstractVillager
+Sniffer              chv      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep Animal
+Tadpole              chb      BRAIN     -                          makeBrain,brainProvider,getBrain,customServerAiStep AbstractFish
+EnderDragon          cia      INHERIT   -                          -                      Mob
+WitherBoss           ciu      MIXED     registerGoals              customServerAiStep     Monster
+
+============================================================================================
+分组汇总
+============================================================================================
+
+  【GOAL】共 25 个
+    Zombie              Drowned             WitherSkeleton      Creeper             Spider              Silverfish        
+    Endermite           Witch               Slime               Ghast               Guardian            Shulker           
+    Vex                 Pillager            Illusioner          Ravager             IronGolem           SnowGolem         
+    Wolf                PolarBear           Llama               TraderLlama         Panda               Dolphin           
+    Turtle            
+
+  【BRAIN】共 15 个
+    ElderGuardian       Goat                Armadillo           Frog                Piglin              PiglinBrute       
+    Hoglin              Zoglin              Warden              Breeze              Axolotl             Allay             
+    Villager            Sniffer             Tadpole           
+
+  【MIXED】共 10 个
+    ZombifiedPiglin     EnderMan            Blaze               Phantom             Vindicator          Evoker            
+    Bee                 Rabbit              Camel               WitherBoss        
+
+  【INHERIT】共 9 个
+    ZombieVillager      Husk                Skeleton            Stray               Bogged              CaveSpider        
+    MagmaCube           Giant               EnderDragon       
+
+[*] 已保存: D:\Coding\projects\peace-and-love\spikes\r3-ai\ai_system_map.json

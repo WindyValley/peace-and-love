@@ -1,0 +1,152 @@
+============================================================================
+关键核实 v2 —— 描述符精确匹配
+============================================================================
+
+============================================================================
+★ 问题 1 —— GoalSelector 完整 API（有没有 removeGoal？）
+  net.minecraft.world.entity.ai.goal.GoalSelector
+============================================================================
+  -- 方法 --
+    static               void                       <clinit>()
+    public               void                       <init>(Supplier)
+    private static       boolean                    addGoal(Predicate, cca)
+    private static       boolean                    addGoal(cam, cca)
+    private static       boolean                    addGoal(cca, EnumSet)
+    private static       boolean                    addGoal(cca, Map)
+    public               void                       addGoal(cam$a, boolean)
+    public               void                       addGoal(int, cam)
+    public               void                       enableControlFlag(cam$a)
+    public               Set                        getAvailableGoals()
+    private static       boolean                    lambda$tick$2(Map$Entry)
+    public               void                       removeAllGoals(Predicate)
+    public               void                       removeAllGoals(cam)
+    public               void                       removeAllGoals(cam$a)
+    public               void                       tick()
+    public               void                       tickRunningGoals(boolean)
+
+============================================================================
+★ 问题 2a —— Entity.hurt
+  net.minecraft.world.entity.Entity
+============================================================================
+  -- 方法 --
+    public               void                       animateHurt(float)
+    public               boolean                    isInvulnerable()
+    public               void                       lavaHurt()
+    protected            void                       markHurt()
+    public               void                       setInvulnerable(boolean)
+
+============================================================================
+★ 问题 2b —— LivingEntity.hurt / 记仇相关
+  net.minecraft.world.entity.LivingEntity
+============================================================================
+  -- 方法 --
+    protected            void                       actuallyHurt(brk, float)
+    public               void                       animateHurt(float)
+    public               boolean                    doHurtTarget(bsr)
+    public               float                      getHurtDir()
+    public               btn                        getLastHurtByMob()
+    public               int                        getLastHurtByMobTimestamp()
+    public               btn                        getLastHurtMob()
+    public               int                        getLastHurtMobTimestamp()
+    protected            void                       hurtCurrentlyUsedShield(float)
+    protected            avo                        setLastHurtByPlayer(cuq)
+    public               boolean                    setLastHurtByPlayer(brz)
+    public               boolean                    setLastHurtByPlayer(bsy)
+    public               boolean                    setLastHurtByPlayer(btn)
+    public               brz                        setLastHurtByPlayer(jm)
+    protected            void                       setLastHurtByPlayer(awu)
+    public               void                       setLastHurtByPlayer(bqq)
+    public               void                       setLastHurtByPlayer(brk)
+    protected            void                       setLastHurtByPlayer(bsr$c)
+    public               void                       setLastHurtByPlayer(cmx)
+    private              void                       setLastHurtByPlayer(jd)
+    public               void                       setLastHurtMob(bsr)
+
+============================================================================
+★ 问题 2c —— Mob.hurt / target / mobInteract
+  net.minecraft.world.entity.Mob
+============================================================================
+  -- 方法 --
+    public               boolean                    doHurtTarget(bsr)
+    public               btn                        getTarget()
+    protected final      btn                        getTargetFromBrain()
+    protected            void                       playHurtSound(brk)
+    public               void                       playHurtSound(bsy)
+    protected            void                       registerGoals()
+    public               void                       setTarget(btn)
+
+============================================================================
+★ 问题 3a —— Player.openTradingScreen
+  net.minecraft.world.entity.player.Player
+============================================================================
+  -- 方法 --
+    public               void                       sendMerchantOffers(int, dbv, int, int, boolean, boolean)
+
+============================================================================
+★ 问题 3b —— AbstractVillager 交易入口
+  net.minecraft.world.entity.npc.AbstractVillager
+============================================================================
+  -- 方法 --
+    protected            void                       addOffersFromItemListings(dbv, cmo$g[], int)
+    public               avo                        getNotifyTradeSound()
+    public               dbv                        getOffers()
+    protected            avo                        getTradeUpdatedSound(boolean)
+    public               cmx                        getTradingPlayer()
+    public               boolean                    isTrading()
+    public               void                       notifyTradeUpdated(cuq)
+    protected abstract   void                       rewardTradeXp(dbu) [abstract]
+    private              void                       rewardTradeXp(dbv)
+    public               void                       rewardTradeXp(ub)
+    protected            void                       stopTrading()
+    protected abstract   void                       updateTrades() [abstract]
+
+============================================================================
+★ 问题 3c —— Villager 补货机制
+  net.minecraft.world.entity.npc.Villager
+============================================================================
+  -- 方法 --
+    private              boolean                    allowedToRestock()
+    public               boolean                    canRestock()
+    public               cco                        getGossips()
+    private              void                       gossip(MinecraftServer, ccs, jl)
+    private static       void                       gossip(aqu, bsr, btn)
+    public               void                       gossip(aqu, cmk, long)
+    public               void                       gossip(aqu, long, int)
+    private              void                       maybeDecayGossip()
+    private              boolean                    needsToRestock()
+    private              void                       resetNumberOfRestocks()
+    public               void                       restock()
+    public               boolean                    shouldRestock()
+
+============================================================================
+补充 a —— HurtByTargetGoal（保留）
+  net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal
+============================================================================
+  -- 方法 --
+    static               void                       <clinit>()
+    public               void                       <init>(btw, Class[])
+    protected            void                       alertOther(btp, btn)
+    protected            void                       alertOthers()
+    public               boolean                    canUse()
+    public               cce                        setAlertOthers(Class[])
+    public               void                       start()
+
+============================================================================
+补充 b —— NearestAttackableTargetGoal（移除对象）
+  net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
+============================================================================
+  -- 方法 --
+    public               void                       <init>(btp, Class, boolean)
+    public               void                       <init>(btp, Class, boolean, Predicate)
+    public               void                       <init>(btp, Class, boolean, boolean)
+    public               void                       <init>(btp, Class, int, boolean, boolean, Predicate)
+    public               boolean                    canUse()
+    protected            void                       findTarget()
+    protected            ewx                        getTargetSearchArea(double)
+    public               void                       getTargetSearchArea(btn)
+    private static       boolean                    lambda$findTarget$0(btn)
+    public               void                       start()
+
+============================================================================
+完成
+============================================================================

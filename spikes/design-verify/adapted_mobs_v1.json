@@ -1,0 +1,71 @@
+{
+  "version": "v1.0",
+  "mc_version": "1.21.1",
+  "total_adapted": 38,
+  "goal_based": [
+    "blaze",
+    "bogged",
+    "cave_spider",
+    "creeper",
+    "drowned",
+    "elder_guardian",
+    "enderman",
+    "endermite",
+    "evoker",
+    "ghast",
+    "giant",
+    "guardian",
+    "husk",
+    "illusioner",
+    "magma_cube",
+    "phantom",
+    "pillager",
+    "ravager",
+    "shulker",
+    "silverfish",
+    "skeleton",
+    "slime",
+    "spider",
+    "stray",
+    "vex",
+    "vindicator",
+    "witch",
+    "wither",
+    "wither_skeleton",
+    "zombie",
+    "zombie_villager",
+    "zombified_piglin"
+  ],
+  "brain_based": [
+    "breeze",
+    "hoglin",
+    "piglin",
+    "piglin_brute",
+    "warden",
+    "zoglin"
+  ],
+  "default_whitelist": [
+    "evoker",
+    "phantom",
+    "pillager",
+    "shulker",
+    "vex",
+    "vindicator"
+  ],
+  "deferred_v1_1": [
+    "ender_dragon"
+  ],
+  "special_adaptations": {
+    "shulker": "固定在方块上，攻击方式为发射导弹；无移动 Goal，索敌逻辑内嵌于 ShulkerAttackGoal",
+    "phantom": "飞行生物，用 PhantomAttackPlayerTargetGoal 而非标准 NearestAttackableTargetGoal；且有「玩家不睡觉才刷新」的生成条件",
+    "pillager": "属于袭击（Raid）系统，中立化会影响袭击事件；需处理 Raider.canJoinRaid",
+    "vindicator": "同属袭击系统；另有 Johnny 名牌特殊行为（攻击一切生物）",
+    "evoker": "同属袭击系统；召唤恼鬼 / 唤魔尖牙，中立后召唤物行为需一并处理",
+    "vex": "由唤魔者召唤，生命周期受召唤者控制；有 owner 概念，中立化需处理 owner 关系",
+    "ender_dragon": "Phase 系统（DragonPhaseInstance），无标准 targetSelector；且交易 UI 对 Boss 无意义",
+    "wither": "自有弹幕逻辑与 targetSelector，但 target 选择在 customServerAiStep 内硬编码"
+  },
+  "decision_log": [
+    "2026-09-11 凋灵(wither)移出默认白名单，默认中立化"
+  ]
+}
