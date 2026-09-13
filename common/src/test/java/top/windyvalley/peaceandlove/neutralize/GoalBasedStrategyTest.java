@@ -121,16 +121,10 @@ class GoalBasedStrategyTest {
 
     @Test
     void 移除目标类都在且继承正确() throws Exception {
-        Class<?> melee = Class.forName("net.minecraft.world.entity.ai.goal.MeleeAttackGoal");
-        Class<?> ranged = Class.forName("net.minecraft.world.entity.ai.goal.RangedAttackGoal");
-        Class<?> bow = Class.forName("net.minecraft.world.entity.ai.goal.RangedBowAttackGoal");
-        Class<?> crossbow = Class.forName("net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal");
         Class<?> nearest = Class.forName("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal");
         Class<?> hurtBy = Class.forName("net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal");
         Class<?> target = Class.forName("net.minecraft.world.entity.ai.goal.target.TargetGoal");
 
-        // 攻击类直接 extends Goal
-        assertEquals(Goal.class, melee.getSuperclass());
         // 索敌类 extends TargetGoal
         assertTrue(target.isAssignableFrom(nearest));
         assertTrue(target.isAssignableFrom(hurtBy));
@@ -138,5 +132,20 @@ class GoalBasedStrategyTest {
         // 保证「移除非 HurtBy 的 TargetGoal」不会误保留索敌者、也不会误移除反击者
         assertFalse(nearest.isAssignableFrom(hurtBy));
         assertFalse(hurtBy.isAssignableFrom(nearest));
+    }
+
+    @Test
+    void 攻击Goal类都在且为Goal直接子类() throws Exception {
+        // 攻击 Goal 不再被移除，但需确认它们存在且继承关系正确——
+        // 它们是「保留」策略的一部分：只在 target != null 时激活，负责寻路+攻击
+        Class<?> melee = Class.forName("net.minecraft.world.entity.ai.goal.MeleeAttackGoal");
+        Class<?> ranged = Class.forName("net.minecraft.world.entity.ai.goal.RangedAttackGoal");
+        Class<?> bow = Class.forName("net.minecraft.world.entity.ai.goal.RangedBowAttackGoal");
+        Class<?> crossbow = Class.forName("net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal");
+
+        assertEquals(Goal.class, melee.getSuperclass(), "MeleeAttackGoal 应直接继承 Goal");
+        assertEquals(Goal.class, ranged.getSuperclass(), "RangedAttackGoal 应直接继承 Goal");
+        assertEquals(Goal.class, bow.getSuperclass(), "RangedBowAttackGoal 应直接继承 Goal");
+        assertEquals(Goal.class, crossbow.getSuperclass(), "RangedCrossbowAttackGoal 应直接继承 Goal");
     }
 }
