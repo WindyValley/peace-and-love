@@ -1,6 +1,6 @@
 # T-ANGER-001: LivingEntityHurtMixin 仇恨注入点
 
-**状态：** todo
+**状态：** done
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
@@ -56,3 +56,6 @@ Entity attacker = source.getEntity();       // 射箭的玩家
 ## 备注
 
 ⚠️ 用户明确强调过两次的硬约束，实现后必须逐条真机验证。
+**完成时间：** 2026-09-14
+**Commit：** 2d22f7d
+**备注：** LivingEntityHurtMixin 已实现并提交

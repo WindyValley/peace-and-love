@@ -1,6 +1,6 @@
 # T-ANGER-003: KinAlerter 同族示警
 
-**状态：** todo
+**状态：** done
 **优先级：** P0
 **预估：** 5h
 **Owner：** agent
@@ -56,3 +56,6 @@ void alert(Mob source, Player attacker, boolean propagate) {
 ## 备注
 
 ⚠️ 风险任务：链式截断逻辑需单测重点覆盖。
+**完成时间：** 2026-09-14
+**Commit：** 1e59761
+**备注：** KinAlerter 已实现并提交

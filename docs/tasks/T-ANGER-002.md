@@ -1,6 +1,6 @@
 # T-ANGER-002: AngerController 状态机与单目标锁定
 
-**状态：** todo
+**状态：** done
 **优先级：** P0
 **预估：** 5h
 **Owner：** agent
@@ -44,3 +44,6 @@
 ## 备注
 
 无
+**完成时间：** 2026-09-14
+**Commit：** 1e59761
+**备注：** AngerController 已实现并提交
