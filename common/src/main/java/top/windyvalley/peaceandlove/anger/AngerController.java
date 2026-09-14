@@ -11,27 +11,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 仇恨状态机与单目标锁定 —— T-ANGER-002。
+ * 玩家攻击引发的<b>额外</b>仇恨与同族示警 —— T-ANGER-002/003。
  *
- * <p><b>核心规则</b>：仇恨只锁定「攻击者本人」，不扩散到其他玩家或 NPC。
- *
- * <p><b>两条实现路径</b>（probe_neutralmob.py 实测，设计文档未覆盖的分流）：
- * <ul>
- *   <li><b>NeutralMob 系</b>（末影人/僵尸猪灵/狼/蜜蜂等，{@code instanceof NeutralMob}）：
- *       用原版 persistentAnger 机制（{@code setPersistentAngerTarget} +
- *       {@code startPersistentAngerTimer}），它自带「只记仇攻击者」语义与 NBT 持久化。</li>
- *   <li><b>Goal 系</b>（僵尸/骷髅/苦力怕等 32 个，<b>不</b>实现 NeutralMob）：
- *       原版 persistentAnger 用不了（强转会 ClassCastException），
- *       改用 {@code mob.setTarget(attacker)} + 受击反击链（T-NEUT-002 已铺好），
- *       仇恨计时由本类自维护（见 {@code angerTickByMob}）。</li>
- * </ul>
- *
- * <p><b>仇恨计时</b>：30 秒（600 tick）或玩家脱离 32 格后脱战恢复中立，
- * 0 秒 = 永久仇恨。计时存实体侧（NeutralMob 系由原版 NBT 持久化；
- * Goal 系由本类按 UUID 记，重启后不保留——可接受，重启脱战即合理）。
- *
- * <p><b>⚠️ 禁止</b>调用 {@code forgetCurrentTargetAndRefreshUniversalAnger()}：
- * 它有 universal anger（对所有玩家记仇）语义，违反「仇恨不扩散到其他玩家」。
+ * <p>注意职责边界：本类<b>不</b>负责“是否允许反击”。
+ * 任何合法伤害源仍应走原版受击反击链；只有「玩家归因」的伤害
+ * 才在这里额外记录仇恨来源、锁定玩家目标，并触发同族示警。
  */
 public final class AngerController {
 
@@ -45,31 +29,28 @@ public final class AngerController {
     private static final Map<UUID, AngerSource> angerSourceByMob = new ConcurrentHashMap<>();
 
     /**
-     * 唯一入口：仅玩家攻击触发（ADR-004 决策三）。
+     * 玩家攻击时调用：记录仇恨来源并触发同族示警。
      *
-     * <p>由 {@code LivingEntityHurtMixin} 在确认伤害源可归因到玩家后调用。
+     * <p>前提是生物已被中立化；非玩家伤害不应走到这里，
+     * 仍由原版受击反击链自行处理。
      */
     public static void onPlayerAttack(Mob mob, Player attacker) {
         if (!NeutralizationScope.isNeutralized(mob.getType(), PeaceAndLove.config().get())) {
             return;
         }
 
-        // 单目标锁定：目标 = 攻击者本人
+        // 玩家攻击的额外效果：把目标锁到攻击者本人，并记录仇恨来源
         mob.setTarget(attacker);
         mob.setLastHurtByPlayer(attacker);
 
         if (mob instanceof NeutralMob neutral) {
-            // NeutralMob 系：用原版 persistentAnger（只记仇攻击者，NBT 持久化）
             neutral.setPersistentAngerTarget(attacker.getUUID());
             neutral.startPersistentAngerTimer();
         } else {
-            // Goal 系：自维护仇恨计时（重启不保留，可接受）
             angerTickByMob.put(mob.getUUID(), cooldownTicks());
         }
 
         setAngerSource(mob, AngerSource.PLAYER_DIRECT);
-
-        // 同族示警（T-ANGER-003）：单层非链式
         KinAlerter.alert(mob, attacker);
     }
 

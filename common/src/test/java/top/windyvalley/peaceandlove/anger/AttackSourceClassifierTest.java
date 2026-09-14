@@ -19,77 +19,69 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AttackSourceClassifierTest {
 
-    // ── ✅ 应触发仇恨的 4 种 ────────────────────────────────────────
+    // ── ✅ 应判定为玩家归因的 4 种 ───────────────────────────────
 
     @Test
-    void 玩家直接攻击_触发() {
-        // (isPlayer, _, _)
-        assertTrue(AttackSourceClassifier.shouldTrigger(
+    void 玩家直接攻击_玩家归因() {
+        assertTrue(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(true, false, false)));
     }
 
     @Test
-    void 玩家投射物_触发() {
-        // 玩家射出的箭：getEntity() 已解析为射箭玩家 → isPlayer=true
-        assertTrue(AttackSourceClassifier.shouldTrigger(
+    void 玩家投射物_玩家归因() {
+        assertTrue(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(true, false, false)));
     }
 
     @Test
-    void 玩家的宠物_触发() {
-        // ( _, isPlayerOwnedPet, _)
-        assertTrue(AttackSourceClassifier.shouldTrigger(
+    void 玩家的宠物_玩家归因() {
+        assertTrue(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, true, false)));
     }
 
     @Test
-    void 玩家点燃的TNT_触发() {
-        // ( _, _, isPlayerLitTnt)
-        assertTrue(AttackSourceClassifier.shouldTrigger(
+    void 玩家点燃的TNT_玩家归因() {
+        assertTrue(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, true)));
     }
 
-    // ── ❌ 不介入（走原版逻辑）的 5 种 ───────────────────────────────
+    // ── ❌ 非玩家归因的 5 种 ─────────────────────────────────────
 
     @Test
-    void 铁傀儡攻击_不触发() {
-        assertFalse(AttackSourceClassifier.shouldTrigger(
+    void 铁傀儡攻击_非玩家归因() {
+        assertFalse(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, false)));
     }
 
     @Test
-    void 村民卫兵攻击_不触发() {
-        // 与铁傀儡同为「非玩家归因」
-        assertFalse(AttackSourceClassifier.shouldTrigger(
+    void 村民卫兵攻击_非玩家归因() {
+        assertFalse(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, false)));
     }
 
     @Test
-    void 怪物内斗_不触发() {
-        assertFalse(AttackSourceClassifier.shouldTrigger(
+    void 怪物内斗_非玩家归因() {
+        assertFalse(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, false)));
     }
 
     @Test
-    void 环境伤害_不触发() {
-        // 跌落/岩浆/窒息/仙人掌：责任实体为 null 或非玩家
-        assertFalse(AttackSourceClassifier.shouldTrigger(
+    void 环境伤害_非玩家归因() {
+        assertFalse(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, false)));
     }
 
     @Test
-    void 无责任实体_不触发() {
-        // 等价 featuresOf(null) 的结果
-        assertFalse(AttackSourceClassifier.shouldTrigger(
+    void 无责任实体_非玩家归因() {
+        assertFalse(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, false, false)));
     }
 
-    // ── 边界：多特征同时成立仍以「可归因玩家」为准 ──────────────────
+    // ── 边界：多特征同时成立仍以「玩家归因」为准 ──────────────────
 
     @Test
-    void 宠物且主人是玩家_触发_即使不是玩家本人() {
-        // 宠物攻击：isPlayer=false 但 isPlayerOwnedPet=true → 仍触发
-        assertTrue(AttackSourceClassifier.shouldTrigger(
+    void 宠物且主人是玩家_玩家归因() {
+        assertTrue(AttackSourceClassifier.isPlayerAttribution(
                 new EntityFeatures(false, true, false)));
     }
 }
