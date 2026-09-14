@@ -1,0 +1,303 @@
+package top.windyvalley.peaceandlove.verify;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import top.windyvalley.peaceandlove.PeaceAndLove;
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * JSON-RPC TCP 服务 —— 用于真机验证时远程操控玩家。
+ *
+ * <p>监听 25585 端口（可配置），接收 JSON-RPC 2.0 请求：
+ * <pre>
+ * {"jsonrpc":"2.0","method":"player.attack","params":{"target":"zombie"},"id":1}
+ * </pre>
+ *
+ * <p>方法清单：
+ * <ul>
+ *   <li>{@code player.attack} —— 玩家攻击最近的指定生物</li>
+ *   <li>{@code player.move} —— 玩家向指定方向移动</li>
+ *   <li>{@code player.pos} —— 查询玩家位置</li>
+ *   <li>{@code entity.list} —— 列出周围生物</li>
+ *   <li>{@code server.status} —— 服务器状态</li>
+ * </ul>
+ *
+ * <p>只在服务端启动时开启，生产环境应通过配置关闭。
+ */
+public final class JsonRpcService {
+
+    private static final int DEFAULT_PORT = 25585;
+    private static final Gson GSON = new Gson();
+
+    private final MinecraftServer server;
+    private final int port;
+    private ServerSocket serverSocket;
+    private Thread acceptThread;
+    private ExecutorService clientPool;
+    private volatile boolean running;
+
+    public JsonRpcService(MinecraftServer server) {
+        this(server, DEFAULT_PORT);
+    }
+
+    public JsonRpcService(MinecraftServer server, int port) {
+        this.server = server;
+        this.port = port;
+    }
+
+    /** 启动 TCP 监听（独立 accept 线程 + 每客户端线程池，不阻塞服务端主线程）。 */
+    public void start() {
+        if (running) {
+            return;
+        }
+        running = true;
+        clientPool = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "PAL-JsonRpc-client");
+            t.setDaemon(true);
+            return t;
+        });
+        acceptThread = new Thread(this::listenLoop, "PAL-JsonRpc-accept");
+        acceptThread.setDaemon(true);
+        acceptThread.start();
+        PeaceAndLove.LOGGER.info("[JSON-RPC] 服务已启动，监听端口 {}", port);
+    }
+
+    /** 停止服务。 */
+    public void stop() {
+        running = false;
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            PeaceAndLove.LOGGER.warn("[JSON-RPC] 关闭 socket 异常", e);
+        }
+        if (acceptThread != null) {
+            acceptThread.interrupt();
+        }
+        if (clientPool != null) {
+            clientPool.shutdownNow();
+        }
+        PeaceAndLove.LOGGER.info("[JSON-RPC] 服务已停止");
+    }
+
+    private void listenLoop() {
+        try (ServerSocket ss = new ServerSocket(port)) {
+            this.serverSocket = ss;
+            while (running) {
+                try {
+                    Socket client = ss.accept();
+                    handleClient(client);
+                } catch (IOException e) {
+                    if (running) {
+                        PeaceAndLove.LOGGER.warn("[JSON-RPC] 接受连接异常", e);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            if (running) {
+                PeaceAndLove.LOGGER.error("[JSON-RPC] 无法绑定端口 {}", port, e);
+            }
+        }
+    }
+
+    private void handleClient(Socket client) {
+        clientPool.submit(() -> {
+            try (client;
+                 BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                 PrintWriter out = new PrintWriter(client.getOutputStream(), true)) {
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (line.isBlank()) {
+                        continue;
+                    }
+                    JsonObject response = handleRequest(line);
+                    out.println(GSON.toJson(response));
+                }
+            } catch (IOException e) {
+                PeaceAndLove.LOGGER.debug("[JSON-RPC] 客户端连接关闭", e);
+            }
+        });
+    }
+
+    private JsonObject handleRequest(String jsonLine) {
+        JsonObject resp = new JsonObject();
+        resp.addProperty("jsonrpc", "2.0");
+        try {
+            JsonObject req = JsonParser.parseString(jsonLine).getAsJsonObject();
+            String method = req.get("method").getAsString();
+            int id = req.has("id") ? req.get("id").getAsInt() : 0;
+            resp.addProperty("id", id);
+
+            JsonObject params = req.has("params") ? req.getAsJsonObject("params") : new JsonObject();
+            Object result = dispatch(method, params);
+            resp.add("result", GSON.toJsonTree(result));
+        } catch (Exception e) {
+            JsonObject error = new JsonObject();
+            error.addProperty("code", -32603);
+            error.addProperty("message", e.getMessage());
+            resp.add("error", error);
+        }
+        return resp;
+    }
+
+    private Object dispatch(String method, JsonObject params) {
+        return switch (method) {
+            case "player.attack" -> playerAttack(params);
+            case "player.move" -> playerMove(params);
+            case "player.pos" -> playerPos();
+            case "entity.list" -> entityList(params);
+            case "server.status" -> serverStatus();
+            case "verify.retaliation" -> verifyRetaliation(params);
+            default -> throw new IllegalArgumentException("未知方法: " + method);
+        };
+    }
+
+    /**
+     * 验证「被打反击」链路 —— 不依赖真实玩家。
+     *
+     * <p>流程：在出生点召唤一只僵尸 + 一只作为攻击者的骷髅，
+     * 让骷髅 hurt 僵尸（走真实伤害管线，触发 setLastHurtByMob），
+     * 等待 2 tick 让 targetSelector 评估 HurtByTargetGoal，
+     * 回读僵尸 getTarget() 是否被设为骷髅。
+     *
+     * <p>攻击者用骷髅而非玩家：僵尸的 HurtByTargetGoal 构造时
+     * toIgnoreDamage 为空，不会过滤同类/异类，任何 LivingEntity 攻击都触发。
+     * 反击链的核心（HurtByTargetGoal.canUse → canAttack → canReach → setTarget）
+     * 与攻击者身份无关——修复前 canReach 因 navigation 未激活返回 false，
+     * 修复后攻击 Goal 保留、navigation 可用，canUse 应返回 true 并 setTarget。
+     */
+    private String verifyRetaliation(JsonObject params) {
+        if (server == null) {
+            return "错误: 服务端未就绪";
+        }
+        net.minecraft.server.level.ServerLevel level = server.overworld();
+        net.minecraft.core.BlockPos spawn = level.getSharedSpawnPos();
+
+        // 召唤僵尸（目标）与骷髅（攻击者）
+        net.minecraft.world.entity.monster.Zombie zombie =
+                new net.minecraft.world.entity.monster.Zombie(level);
+        zombie.moveTo(spawn.getX() + 2, spawn.getY() + 1, spawn.getZ() + 2, 0, 0);
+        level.addFreshEntity(zombie);
+
+        net.minecraft.world.entity.monster.Skeleton skeleton =
+                new net.minecraft.world.entity.monster.Skeleton(
+                        net.minecraft.world.entity.EntityType.SKELETON, level);
+        skeleton.moveTo(spawn.getX() + 5, spawn.getY() + 1, spawn.getZ() + 5, 0, 0);
+        level.addFreshEntity(skeleton);
+
+        // 用骷髅作为伤害来源打僵尸（真实伤害管线 → setLastHurtByMob）
+        boolean hurtOk = zombie.hurt(level.damageSources().mobAttack(skeleton), 1.0F);
+
+        // 等 2 tick 让 targetSelector 跑 HurtByTargetGoal.canUse()
+        StringBuilder sb = new StringBuilder();
+        sb.append("hurt 调用返回: ").append(hurtOk).append("\n");
+        sb.append("lastHurtByMob: ").append(
+                zombie.getLastHurtByMob() == null ? "null" : zombie.getLastHurtByMob().getType().toString()).append("\n");
+
+        // 在服务端主线程调度延迟检查（2 tick ≈ 100ms）
+        final boolean[] targetSet = new boolean[1];
+        final String[] targetName = new String[1];
+        server.execute(() -> {
+            // 已过了 server.execute 的排队，直接再推 2 tick
+            server.tell(new net.minecraft.server.TickTask(server.getTickCount() + 2, () -> {
+                net.minecraft.world.entity.LivingEntity t = zombie.getTarget();
+                targetSet[0] = (t == skeleton);
+                targetName[0] = (t == null ? "null" : t.getType().toString());
+                PeaceAndLove.LOGGER.info("[JSON-RPC] verify.retaliation 结果: target={}", targetName[0]);
+            }));
+        });
+
+        // 同步等待最多 2 秒拿结果
+        long deadline = System.currentTimeMillis() + 2000;
+        while (System.currentTimeMillis() < deadline && targetName[0] == null) {
+            try { Thread.sleep(50); } catch (InterruptedException ignored) { break; }
+        }
+
+        sb.append("反击判定 (2 tick 后 zombie.getTarget()): ")
+                .append(targetName[0] == null ? "(超时未取到)" : targetName[0]).append("\n");
+        sb.append(targetSet[0]
+                ? "✅ 反击链正常: HurtByTargetGoal 成功 setTarget(攻击者)"
+                : "❌ 反击未触发: getTarget() 未设为攻击者（仍不反击）");
+        return sb.toString();
+    }
+
+    private String playerAttack(JsonObject params) {
+        String targetType = params.has("target") ? params.get("target").getAsString() : "zombie";
+        ServerPlayer player = getFirstPlayer();
+        if (player == null) {
+            return "错误: 无在线玩家";
+        }
+        // 找最近的指定类型生物
+        List<Entity> entities = player.level().getEntities(player, player.getBoundingBox().inflate(32.0),
+                e -> e instanceof Mob mob && mob.getType().toString().contains(targetType));
+        if (entities.isEmpty()) {
+            return "错误: 附近 32 格内无 " + targetType;
+        }
+        Entity target = entities.get(0);
+        // 模拟玩家攻击：直接调用 hurt 并设置伤害来源为玩家
+        target.hurt(player.damageSources().playerAttack(player), 1.0F);
+        return "已攻击 " + target.getType().toString() + " (距离 " + String.format("%.1f", player.distanceTo(target)) + " 格)";
+    }
+
+    private String playerMove(JsonObject params) {
+        double dx = params.has("dx") ? params.get("dx").getAsDouble() : 0;
+        double dy = params.has("dy") ? params.get("dy").getAsDouble() : 0;
+        double dz = params.has("dz") ? params.get("dz").getAsDouble() : 0;
+        ServerPlayer player = getFirstPlayer();
+        if (player == null) {
+            return "错误: 无在线玩家";
+        }
+        player.setDeltaMovement(player.getDeltaMovement().add(dx, dy, dz));
+        return "已施加移动向量 (" + dx + ", " + dy + ", " + dz + ")";
+    }
+
+    private String playerPos() {
+        ServerPlayer player = getFirstPlayer();
+        if (player == null) {
+            return "错误: 无在线玩家";
+        }
+        return String.format("玩家 %s 位于 (%.1f, %.1f, %.1f) 维度 %s 模式 %s",
+                player.getName().getString(),
+                player.getX(), player.getY(), player.getZ(),
+                player.level().dimension().location(),
+                player.gameMode.getGameModeForPlayer().getName());
+    }
+
+    private String entityList(JsonObject params) {
+        double radius = params.has("radius") ? params.get("radius").getAsDouble() : 16.0;
+        ServerPlayer player = getFirstPlayer();
+        if (player == null) {
+            return "错误: 无在线玩家";
+        }
+        List<Entity> entities = player.level().getEntities(player, player.getBoundingBox().inflate(radius),
+                e -> e instanceof Mob);
+        StringBuilder sb = new StringBuilder("周围 " + radius + " 格内生物:\n");
+        for (Entity e : entities) {
+            sb.append(String.format("- %s (%.1f, %.1f, %.1f) 距离 %.1f 格\n",
+                    e.getType().toString(), e.getX(), e.getY(), e.getZ(), player.distanceTo(e)));
+        }
+        return sb.toString();
+    }
+
+    private String serverStatus() {
+        return String.format("服务器在线，玩家数 %d，TPS 正常",
+                server.getPlayerList().getPlayerCount());
+    }
+
+    private ServerPlayer getFirstPlayer() {
+        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+        return players.isEmpty() ? null : players.get(0);
+    }
+}

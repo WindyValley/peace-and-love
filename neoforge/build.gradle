@@ -9,6 +9,18 @@ architectury {
 
 loom {
     accessWidenerPath = project(":common").loom.accessWidenerPath
+
+    runs {
+        client {
+            // 自动化测试：启动后直连测试服务器，离线用户名 Dev
+            // 1.21.1 用 quickPlayMultiplayer 跳过主菜单直连
+            programArgs "--quickPlayMultiplayer", "192.0.2.10:25565"
+            programArgs "--username", "Dev"
+            // 窗口调小，减少自动化测试时的渲染开销
+            programArgs "--width", "854"
+            programArgs "--height", "480"
+        }
+    }
 }
 
 configurations {
