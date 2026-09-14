@@ -1,0 +1,125 @@
+package top.windyvalley.peaceandlove.anger;
+
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.player.Player;
+import top.windyvalley.peaceandlove.PeaceAndLove;
+import top.windyvalley.peaceandlove.scope.NeutralizationScope;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 仇恨状态机与单目标锁定 —— T-ANGER-002。
+ *
+ * <p><b>核心规则</b>：仇恨只锁定「攻击者本人」，不扩散到其他玩家或 NPC。
+ *
+ * <p><b>两条实现路径</b>（probe_neutralmob.py 实测，设计文档未覆盖的分流）：
+ * <ul>
+ *   <li><b>NeutralMob 系</b>（末影人/僵尸猪灵/狼/蜜蜂等，{@code instanceof NeutralMob}）：
+ *       用原版 persistentAnger 机制（{@code setPersistentAngerTarget} +
+ *       {@code startPersistentAngerTimer}），它自带「只记仇攻击者」语义与 NBT 持久化。</li>
+ *   <li><b>Goal 系</b>（僵尸/骷髅/苦力怕等 32 个，<b>不</b>实现 NeutralMob）：
+ *       原版 persistentAnger 用不了（强转会 ClassCastException），
+ *       改用 {@code mob.setTarget(attacker)} + 受击反击链（T-NEUT-002 已铺好），
+ *       仇恨计时由本类自维护（见 {@code angerTickByMob}）。</li>
+ * </ul>
+ *
+ * <p><b>仇恨计时</b>：30 秒（600 tick）或玩家脱离 32 格后脱战恢复中立，
+ * 0 秒 = 永久仇恨。计时存实体侧（NeutralMob 系由原版 NBT 持久化；
+ * Goal 系由本类按 UUID 记，重启后不保留——可接受，重启脱战即合理）。
+ *
+ * <p><b>⚠️ 禁止</b>调用 {@code forgetCurrentTargetAndRefreshUniversalAnger()}：
+ * 它有 universal anger（对所有玩家记仇）语义，违反「仇恨不扩散到其他玩家」。
+ */
+public final class AngerController {
+
+    private AngerController() {
+    }
+
+    /** 每只 Goal 系生物的剩余仇恨 tick（NeutralMob 系由原版自管）。 */
+    private static final Map<UUID, Integer> angerTickByMob = new ConcurrentHashMap<>();
+
+    /** 每只生物当前的仇恨来源（NONE 即中立，可交易）。 */
+    private static final Map<UUID, AngerSource> angerSourceByMob = new ConcurrentHashMap<>();
+
+    /**
+     * 唯一入口：仅玩家攻击触发（ADR-004 决策三）。
+     *
+     * <p>由 {@code LivingEntityHurtMixin} 在确认伤害源可归因到玩家后调用。
+     */
+    public static void onPlayerAttack(Mob mob, Player attacker) {
+        if (!NeutralizationScope.isNeutralized(mob.getType(), PeaceAndLove.config().get())) {
+            return;
+        }
+
+        // 单目标锁定：目标 = 攻击者本人
+        mob.setTarget(attacker);
+        mob.setLastHurtByPlayer(attacker);
+
+        if (mob instanceof NeutralMob neutral) {
+            // NeutralMob 系：用原版 persistentAnger（只记仇攻击者，NBT 持久化）
+            neutral.setPersistentAngerTarget(attacker.getUUID());
+            neutral.startPersistentAngerTimer();
+        } else {
+            // Goal 系：自维护仇恨计时（重启不保留，可接受）
+            angerTickByMob.put(mob.getUUID(), cooldownTicks());
+        }
+
+        setAngerSource(mob, AngerSource.PLAYER_DIRECT);
+
+        // 同族示警（T-ANGER-003）：单层非链式
+        KinAlerter.alert(mob, attacker);
+    }
+
+    /** 脱战：恢复中立（清空目标与仇恨，回到可交易状态）。 */
+    public static void calmDown(Mob mob) {
+        if (mob instanceof NeutralMob neutral) {
+            neutral.stopBeingAngry();
+        }
+        angerTickByMob.remove(mob.getUUID());
+        mob.setTarget(null);
+        setAngerSource(mob, AngerSource.NONE);
+    }
+
+    // ── 仇恨来源存取（供脱战/示警/调试判定）─────────────────────────
+
+    public static AngerSource angerSourceOf(Mob mob) {
+        return angerSourceByMob.getOrDefault(mob.getUUID(), AngerSource.NONE);
+    }
+
+    public static void setAngerSource(Mob mob, AngerSource source) {
+        if (source == AngerSource.NONE) {
+            angerSourceByMob.remove(mob.getUUID());
+        } else {
+            angerSourceByMob.put(mob.getUUID(), source);
+        }
+    }
+
+    // ── T-ANGER-004 脱战冷却（Goal 系计时存取）──────────────────────
+
+    /** Goal 系生物剩余仇恨 tick；无记录返回 0（已脱战）。 */
+    public static int remainingAngerTick(UUID mobId) {
+        return angerTickByMob.getOrDefault(mobId, 0);
+    }
+
+    /** 冷却期玩家再次攻击 → 重置计时（Goal 系）。 */
+    public static void resetAngerTick(UUID mobId) {
+        angerTickByMob.put(mobId, cooldownTicks());
+    }
+
+    /** 递减 Goal 系仇恨计时，返回剩余 tick（供每 tick 脱战判定）。 */
+    public static int decrementAngerTick(UUID mobId) {
+        return angerTickByMob.merge(mobId, -1, Integer::sum);
+    }
+
+    /** 配置里的冷却秒数转 tick；0 = 永久（返回一个永不到期的极大值）。 */
+    private static int cooldownTicks() {
+        int seconds = PeaceAndLove.config().get().anger_cooldown_seconds();
+        if (seconds <= 0) {
+            return Integer.MAX_VALUE; // 永久仇恨
+        }
+        return seconds * 20;
+    }
+}
