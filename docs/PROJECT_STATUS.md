@@ -98,6 +98,28 @@ CI 两次跑绿：
 
 ---
 
+## Dev 阶段 · Sprint 2 进行中（2026-09-14 反击链验证）
+
+**T-NEUT-002 完成（Goal 系中立化策略）**，真机验证反击链生效：
+
+- **真 bug 修复**（`b9c262b`）：原设计「删除攻击 Goal」导致被打不反击。
+  根因——`HurtByTargetGoal.mustReach=true`，`canAttack()` 内部 `canReach()`
+  依赖 navigation，攻击 Goal 被删后 navigation 未激活 → `canUse()` 永 false。
+  修法：参考末影人/北极熊/熊猫原版实现，**保留攻击 Goal、只删主动索敌 Goal**。
+- **验证设施**（`2de1789`）：服务端 JSON-RPC（TCP 25585）+ runClient 离线直连。
+  真实玩家 Dev（生存）上线，`player.attack` 打僵尸 → 日志 `Dev was slain by Zombie`，
+  僵尸持续追击致死，反击链完整工作。
+
+**已测路径**：真实玩家（生存）真实 `playerAttack` 伤害 → 僵尸反击致死。
+**未测路径**：骷髅/蜘蛛/苦力怕反击（同策略，建议真机复核）；Brain 系（`BrainBasedStrategy`，不同机制）；玩家输入驱动的完整攻击动作（服务端 RPC 只伪造伤害来源，不模拟输入）。
+
+**遗留**：
+- 服务端 JSON-RPC 硬编码开启、无鉴权 → 正式发布前必须关闭/移除（代码已标 TODO）
+- 客户端侧 JSON-RPC（真实输入驱动）→ 另立独立项目
+- PrismLauncher 实例 `1.21.1-modded` 曾排查：元数据缓存损坏已清（meta/net.neoforged/index.json、net.minecraft/1.21.1.json），客户端 mmc-pack.json 的 NeoForge 被改为 21.1.250（.bak 备份在同目录）
+
+---
+
 ## Decompose 阶段（2026-09-11 完成）
 
 产出：`03-decomposition.md`、`03-task-graph.md`、`tasks/`（40 个任务文件）
