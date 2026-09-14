@@ -54,6 +54,9 @@ public final class PeaceAndLove {
         neutralizationService = new NeutralizationService(configManager);
         neutralizationService.register();
 
+        // 仇恨衰减接线（T-ANGER-004）：Goal 系每 tick 脱战判定
+        new top.windyvalley.peaceandlove.anger.AngerDecayService().register();
+
         // 服务端生命周期：启动时开启 JSON-RPC，关闭时停止
         LifecycleEvent.SERVER_STARTING.register(server -> {
             minecraftServer = server;

@@ -114,12 +114,73 @@ public final class AngerController {
         return angerTickByMob.merge(mobId, -1, Integer::sum);
     }
 
+    /** 测试可注入的冷却秒数覆盖；为 {@code null} 时仍读线上配置。 */
+    private static Integer cooldownSecondsOverrideForTest = null;
+
+    static void overrideCooldownSecondsForTest(Integer seconds) {
+        cooldownSecondsOverrideForTest = seconds;
+    }
+
+    private static int currentCooldownSeconds() {
+        if (cooldownSecondsOverrideForTest != null) {
+            return cooldownSecondsOverrideForTest;
+        }
+        return PeaceAndLove.config().get().anger_cooldown_seconds();
+    }
+
     /** 配置里的冷却秒数转 tick；0 = 永久（返回一个永不到期的极大值）。 */
     private static int cooldownTicks() {
-        int seconds = PeaceAndLove.config().get().anger_cooldown_seconds();
+        int seconds = currentCooldownSeconds();
         if (seconds <= 0) {
             return Integer.MAX_VALUE; // 永久仇恨
         }
         return seconds * 20;
+    }
+
+    // ── T-ANGER-004 脱战冷却：每 tick 判定 ──────────────────────────
+
+    /** 配置里的脱战距离（格）。 */
+    private static double cooldownDistanceSqr() {
+        double d = PeaceAndLove.config().get().anger_cooldown_distance();
+        return d * d;
+    }
+
+    /**
+     * 每 tick 对一个生物做脱战判定（由 AngerDecayService 遍历调用）。
+     *
+     * <p>脱战条件（满足其一，设计 docs/02-design.md §3.6）：
+     * <ol>
+     *   <li>仇恨计时结束（Goal 系本类自管；NeutralMob 系原版自管，无需这里判）</li>
+     *   <li>玩家脱离配置距离（默认 32 格）</li>
+     * </ol>
+     *
+     * <p>脱战后调 {@link #calmDown} 清空目标与仇恨来源，回到中立可交易状态。
+     * NeutralMob 系由原版 persistentAnger 计时自管，本方法只处理 Goal 系。
+     */
+    public static void tickDecay(Mob mob) {
+        if (mob instanceof NeutralMob) {
+            return; // NeutralMob 系由原版计时自管
+        }
+        UUID id = mob.getUUID();
+        if (angerSourceOf(mob) == AngerSource.NONE) {
+            return; // 本就中立
+        }
+
+        // 条件 2：目标玩家脱离距离
+        var target = mob.getTarget();
+        if (target instanceof Player player
+                && mob.distanceToSqr(player) > cooldownDistanceSqr()) {
+            calmDown(mob);
+            return;
+        }
+
+        // 条件 1：仇恨计时结束（0/负数 = 永久仇恨，Integer.MAX_VALUE 永不到期）
+        int remaining = remainingAngerTick(id);
+        if (remaining == Integer.MAX_VALUE) {
+            return; // 永久仇恨
+        }
+        if (decrementAngerTick(id) <= 0) {
+            calmDown(mob);
+        }
     }
 }
