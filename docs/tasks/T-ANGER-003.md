@@ -58,4 +58,4 @@ void alert(Mob source, Player attacker, boolean propagate) {
 ⚠️ 风险任务：链式截断逻辑需单测重点覆盖。
 **完成时间：** 2026-09-14
 **Commit：** 1e59761
-**备注：** KinAlerter 已实现并提交
+**备注：** 反击与示警已解耦：生物间攻击仍走正常反击，玩家攻击才触发同族示警

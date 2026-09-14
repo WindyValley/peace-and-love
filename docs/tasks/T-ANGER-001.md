@@ -58,4 +58,4 @@ Entity attacker = source.getEntity();       // 射箭的玩家
 ⚠️ 用户明确强调过两次的硬约束，实现后必须逐条真机验证。
 **完成时间：** 2026-09-14
 **Commit：** 2d22f7d
-**备注：** LivingEntityHurtMixin 已实现并提交
+**备注：** 反击与示警已解耦：生物间攻击仍走正常反击，玩家攻击才触发同族示警
