@@ -4,6 +4,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.player.Player;
 import top.windyvalley.peaceandlove.PeaceAndLove;
+import top.windyvalley.peaceandlove.scope.AlertScope;
 import top.windyvalley.peaceandlove.scope.NeutralizationScope;
 
 import java.util.Map;
@@ -51,7 +52,16 @@ public final class AngerController {
         }
 
         setAngerSource(mob, AngerSource.PLAYER_DIRECT);
-        KinAlerter.alert(mob, attacker);
+
+        // 同族示警分两类（见 scope/AlertScope）：
+        //  - A/B 类：生物带构造期注册的 HurtByTargetGoal，受击后原版 start()→alertOthers，
+        //    由 HurtByTargetGoalMixin 统一收窄半径，这里不重复示警；
+        //  - C 类（巨人/守卫者/远古守卫者/恶魂/史莱姆/岩浆怪/幻翼）：无可用的示警 goal
+        //    （非 Pathfinder 挂不上；Pathfinder 运行时 addGoal 触发不可靠），由本玩家攻击
+        //    路径直接调 KinAlerter。
+        if (AlertScope.requiresDirectAlert(mob.getType())) {
+            KinAlerter.alert(mob, attacker);
+        }
     }
 
     /** 脱战：恢复中立（清空目标与仇恨，回到可交易状态）。 */
