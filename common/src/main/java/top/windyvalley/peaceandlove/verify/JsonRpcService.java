@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import top.windyvalley.peaceandlove.PeaceAndLove;
+import top.windyvalley.peaceandlove.anger.AngerController;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -160,6 +161,7 @@ public final class JsonRpcService {
             case "entity.list" -> entityList(params);
             case "server.status" -> serverStatus();
             case "verify.retaliation" -> verifyRetaliation(params);
+            case "mob.anger" -> mobAnger(params);
             default -> throw new IllegalArgumentException("未知方法: " + method);
         };
     }
@@ -294,6 +296,59 @@ public final class JsonRpcService {
     private String serverStatus() {
         return String.format("服务器在线，玩家数 %d，TPS 正常",
                 server.getPlayerList().getPlayerCount());
+    }
+
+    /**
+     * 按自定义名查询生物的 mod 仇恨归因 —— T-ANGER 真机验证探针。
+     *
+     * <p>为什么不能只看原版 {@code getTarget()}：守卫者等生物的攻击 Goal
+     * （GuardianAttackGoal）每 tick 用视线校验目标，陆地隔间里会立刻
+     * {@code setTarget(null)}，原版目标读不到；但 mod 的 AngerSource 标记
+     * （PLAYER_DIRECT/KIN_ALERT）由本模组自管、保留 30s，不受原版 Goal 清目标影响。
+     *
+     * <p>params: {"name":"near"}。返回 {@code source=NONE|PLAYER_DIRECT|KIN_ALERT;
+     * target=none|player|<type>;type=<id>}，找不到实体返回错误串。
+     * 实体遍历必须在服务端主线程，RPC 线程同步等待最多 2s。
+     */
+    private String mobAnger(JsonObject params) {
+        if (server == null) {
+            return "错误: 服务端未就绪";
+        }
+        if (!params.has("name")) {
+            return "错误: 缺少 name 参数";
+        }
+        String name = params.get("name").getAsString();
+        java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
+        server.execute(() -> {
+            Mob found = null;
+            for (Entity e : server.overworld().getAllEntities()) {
+                if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
+                    found = mob;
+                    break;
+                }
+            }
+            if (found == null) {
+                future.complete("错误: 找不到名为 " + name + " 的生物");
+                return;
+            }
+            String source = AngerController.angerSourceOf(found).name();
+            net.minecraft.world.entity.LivingEntity t = found.getTarget();
+            String target;
+            if (t == null) {
+                target = "none";
+            } else if (t instanceof net.minecraft.world.entity.player.Player) {
+                target = "player";
+            } else {
+                target = net.minecraft.world.entity.EntityType.getKey(t.getType()).getPath();
+            }
+            future.complete("source=" + source + ";target=" + target
+                    + ";type=" + net.minecraft.world.entity.EntityType.getKey(found.getType()).getPath());
+        });
+        try {
+            return future.get(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return "错误: 主线程查询超时: " + e.getMessage();
+        }
     }
 
     private ServerPlayer getFirstPlayer() {
