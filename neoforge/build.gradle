@@ -12,9 +12,10 @@ loom {
 
     runs {
         client {
-            // 自动化测试：启动后直连测试服务器，离线用户名 Dev
-            // 1.21.1 用 quickPlayMultiplayer 跳过主菜单直连
-            programArgs "--quickPlayMultiplayer", "192.0.2.10:25565"
+            // 自动化测试：离线用户名 Dev；启动后停在标题屏。
+            // 连接服务器由测试脚本（launch_and_connect.py）在初始化走完后显式发起，
+            // 不用 --quickPlayMultiplayer：它会在资源/Mod 未加载完时抢连，
+            // 出现「进服后又跳回标题屏」的时序问题。
             programArgs "--username", "Dev"
             // 窗口调小，减少自动化测试时的渲染开销
             programArgs "--width", "854"
