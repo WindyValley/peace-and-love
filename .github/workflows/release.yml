@@ -1,0 +1,61 @@
+name: release-ci
+
+# 打版本标签时触发（如 v1.0.0）。只在标签上跑，普通推送不跑。
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # 需要写权限才能创建 Release、上传产物
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate Gradle wrapper
+        run: |
+          test -f gradle/wrapper/gradle-wrapper.jar \
+            || (echo "::error::gradle-wrapper.jar 缺失" && exit 1)
+          chmod +x gradlew
+
+      - name: Build release jars
+        # 不带 -PenableVerifyRpc：默认正式构建，调试端口代码在编译期已消除，
+        # 保证上传的是端口关闭的可分发产物。build 同时跑全部单测。
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Stage release jars
+        # 只挑可分发主产物（Fabric + NeoForge），排除 dev-shadow 与 sources
+        run: |
+          set -e
+          mkdir -p dist
+          for loader in fabric neoforge; do
+            if compgen -G "$loader/build/libs/peaceandlove-*.jar" > /dev/null; then
+              cp "$loader"/build/libs/peaceandlove-*.jar dist/
+            fi
+          done
+          rm -f dist/*-dev-shadow.jar dist/*-sources.jar
+          echo "=== 待上传产物 ==="
+          ls -la dist
+
+      - name: Create GitHub Release and upload jars
+        uses: softprops/action-gh-release@v2
+        with:
+          # 只上传 dist 里筛好的双端正式 jar
+          files: dist/*.jar
+          # 自动生成一份变更初稿（基于 PR/提交），事后仍可在 Release 页编辑
+          generate_release_notes: true
+          # 同名重复构建时覆盖更新，不报错
+          fail_on_unmatched_files: true

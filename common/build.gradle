@@ -35,14 +35,12 @@ public final class BuildFlags {
     }
 }
 
+// 把【生成任务】本身挂为源码目录（不是裸目录）：Gradle 会给所有用到该
+// 源集的任务（compileJava、sourcesJar 等）自动推断任务依赖，避免漏声明。
 sourceSets {
     main {
-        java.srcDir(generatedFlagsDir)
+        java.srcDir(generateBuildFlags)
     }
-}
-
-tasks.named("compileJava") {
-    dependsOn(generateBuildFlags)
 }
 
 dependencies {
