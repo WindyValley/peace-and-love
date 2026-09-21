@@ -26,7 +26,10 @@ allprojects {
     apply plugin: "maven-publish"
 
     archivesBaseName = project.archives_name
-    version = project.mod_version
+    // 版本号单一来源：默认读 gradle.properties 的 mod_version；
+    // 构建参数 -PmodVersion=<x> 可临时覆盖（发 alpha/正式 tag 时 CI 用），
+    // 例：./gradlew build -PmodVersion=0.1.0-alpha.1
+    version = rootProject.findProperty("modVersion") ?: project.mod_version
     group = project.maven_group
 
     repositories {

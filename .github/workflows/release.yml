@@ -32,30 +32,44 @@ jobs:
           chmod +x gradlew
 
       - name: Build release jars
-        # 不带 -PenableVerifyRpc：默认正式构建，调试端口代码在编译期已消除，
-        # 保证上传的是端口关闭的可分发产物。build 同时跑全部单测。
-        run: ./gradlew build --no-daemon --stacktrace
+        # 版本号取自触发的标签：标签 v0.1.0 -> 构建版本 0.1.0。
+        # 不带 -PenableVerifyRpc：默认正式构建，调试端口编译期已关闭。
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          echo "构建版本：$VERSION（标签 $TAG_NAME）"
+          ./gradlew build --no-daemon --stacktrace -PmodVersion="$VERSION"
 
       - name: Stage release jars
-        # 只挑可分发主产物（Fabric + NeoForge），排除 dev-shadow 与 sources
+        # 只挑可分发主产物，按加载器重命名，避免 Fabric/NeoForge
+        # 同名文件（都叫 peaceandlove-<v>.jar）汇总时互相覆盖。
+        env:
+          TAG_NAME: ${{ github.ref_name }}
         run: |
           set -e
+          VERSION="${TAG_NAME#v}"
           mkdir -p dist
           for loader in fabric neoforge; do
-            if compgen -G "$loader/build/libs/peaceandlove-*.jar" > /dev/null; then
-              cp "$loader"/build/libs/peaceandlove-*.jar dist/
+            src="$loader/build/libs/peaceandlove-$VERSION.jar"
+            if [ -f "$src" ]; then
+              cp "$src" "dist/peaceandlove-$VERSION-$loader.jar"
+            else
+              echo "::error::找不到 $src"
+              exit 1
             fi
           done
-          rm -f dist/*-dev-shadow.jar dist/*-sources.jar
           echo "=== 待上传产物 ==="
           ls -la dist
 
       - name: Create GitHub Release and upload jars
         uses: softprops/action-gh-release@v2
         with:
-          # 只上传 dist 里筛好的双端正式 jar
+          name: ${{ github.ref_name }} (alpha)
           files: dist/*.jar
-          # 自动生成一份变更初稿（基于 PR/提交），事后仍可在 Release 页编辑
           generate_release_notes: true
-          # 同名重复构建时覆盖更新，不报错
           fail_on_unmatched_files: true
+          # 0.x 一律标记为预发布，不当作正式版本
+          prerelease: true
+          # 重跑时覆盖同名 Release
+          make_latest: false
