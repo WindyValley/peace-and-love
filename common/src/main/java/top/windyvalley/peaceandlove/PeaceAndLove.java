@@ -57,20 +57,23 @@ public final class PeaceAndLove {
         // 仇恨衰减接线（T-ANGER-004）：Goal 系每 tick 脱战判定
         new top.windyvalley.peaceandlove.anger.AngerDecayService().register();
 
-        // 服务端生命周期：启动时开启 JSON-RPC，关闭时停止
-        LifecycleEvent.SERVER_STARTING.register(server -> {
-            minecraftServer = server;
-            jsonRpcService = new JsonRpcService(server);
-            jsonRpcService.start();
-            LOGGER.info("[JSON-RPC] 验证服务已随服务端启动");
-        });
-        LifecycleEvent.SERVER_STOPPED.register(server -> {
-            if (jsonRpcService != null) {
-                jsonRpcService.stop();
-                jsonRpcService = null;
-            }
-            minecraftServer = null;
-        });
+        // 服务端生命周期：启动时开启 JSON-RPC，关闭时停止。
+        // 仅在显式开启调试端口的构建里生效（正式构建常量为 false，代码被编译消除）。
+        if (BuildFlags.ENABLE_VERIFY_RPC) {
+            LifecycleEvent.SERVER_STARTING.register(server -> {
+                minecraftServer = server;
+                jsonRpcService = new JsonRpcService(server);
+                jsonRpcService.start();
+                LOGGER.info("[JSON-RPC] 验证服务已随服务端启动");
+            });
+            LifecycleEvent.SERVER_STOPPED.register(server -> {
+                if (jsonRpcService != null) {
+                    jsonRpcService.stop();
+                    jsonRpcService = null;
+                }
+                minecraftServer = null;
+            });
+        }
 
         // TODO(T-TRADE-001) 注册交易系统
 
