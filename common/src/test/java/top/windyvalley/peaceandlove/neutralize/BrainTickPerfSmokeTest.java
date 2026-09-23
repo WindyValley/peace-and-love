@@ -7,13 +7,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * T-NEUT-003 性能基线：分派判定的开销 smoke。
+ * T-NEUT-003 性能基线：策略分派判定的开销 smoke。
  *
- * <p>任务卡要求「单实体每 tick 开销 < 1μs」。每 tick 真正干活的
- * eraseAttackMemory 需要真实 Brain，无法在 JUnit 测；但每 tick 每实体
- * 都必经的 supports 分派（Set.contains）是可测的热路径，这里量化它。
- *
- * <p>真正的 tick 擦除性能须真机 profiling（spark），列为未测项。
+ * <p>源头拦截后不再有每 tick 的全服遍历；持续开销转移到 BrainMixin 里
+ * 每次攻击记忆写入时的一次门控判定，须真机 profiling（spark）。
+ * 这里量化纯 JUnit 可测的热路径——策略注册表的 supports 分派（Set.contains）。
  */
 class BrainTickPerfSmokeTest {
 
