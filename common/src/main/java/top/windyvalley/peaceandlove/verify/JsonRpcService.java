@@ -341,6 +341,15 @@ public final class JsonRpcService {
             }
             String source = AngerController.angerSourceOf(found).name();
             net.minecraft.world.entity.LivingEntity t = found.getTarget();
+            // Brain 怪目标在 ATTACK_TARGET 记忆里（getTarget 常为 null），
+            // getTarget 读不到时回退到记忆，保证 target 字段对 Brain 怪也准确。
+            if (t == null) {
+                t = found.getBrain()
+                        .getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET)
+                        .filter(x -> x instanceof net.minecraft.world.entity.LivingEntity)
+                        .map(x -> (net.minecraft.world.entity.LivingEntity) x)
+                        .orElse(null);
+            }
             String target;
             if (t == null) {
                 target = "none";
