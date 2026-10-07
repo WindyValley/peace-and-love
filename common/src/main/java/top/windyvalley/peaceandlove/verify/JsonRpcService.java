@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -321,9 +322,16 @@ public final class JsonRpcService {
         java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
         server.execute(() -> {
             Mob found = null;
-            for (Entity e : server.overworld().getAllEntities()) {
-                if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
-                    found = mob;
+            // 遍历所有维度（不能只看主世界）：地狱的 Brain 怪也要能查到，
+            // 否则 mob.anger 在跨维度验证时永远“找不到生物”。
+            for (ServerLevel level : server.getAllLevels()) {
+                for (Entity e : level.getAllEntities()) {
+                    if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
+                        found = mob;
+                        break;
+                    }
+                }
+                if (found != null) {
                     break;
                 }
             }
