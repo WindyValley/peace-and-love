@@ -29,18 +29,12 @@ def wait_ready() -> None:
     while time.time() < deadline:
         try:
             status = rpc("client.status", timeout=2)
-            if "已进世界=true" in status:
+            if status["inWorld"]:
                 return
         except Exception:
             pass
         time.sleep(1)
     raise RuntimeError("进世界超时")
-
-
-def parse_pos(pos: str):
-    parts = pos.replace("位置", "").replace("(", "").replace(")", "").replace(",", " ").split()
-    nums = [p for p in parts if p.replace(".", "", 1).replace("-", "", 1).isdigit()]
-    return map(int, map(float, nums[:3]))
 
 
 def main() -> int:
@@ -66,10 +60,11 @@ def main() -> int:
         wait_ready()
 
         st = rpc("player.state")
-        if "死亡 是" in st:
+        if st["dead"]:
             rpc("player.respawn")
 
-        cx, cy, cz = parse_pos(rpc("player.pos"))
+        pos = rpc("player.pos")
+        cx, cy, cz = int(pos["x"]), int(pos["y"]), int(pos["z"])
         make_box(cx, cy, cz)
         server_rcon(f"tp {PLAYER} {cx} {cy+1} {cz}")
         time.sleep(1)
@@ -92,10 +87,14 @@ def main() -> int:
         ents = rpc("world.entities", {"radius": 24})
         print(f"entities => {ents}")
 
-        if "NEAR_OK" not in ents:
-            raise RuntimeError("4 格内同族未被示警（near 未锁定 Dev 为目标）")
-        if "FAR_OK" in ents:
-            raise RuntimeError("6 格外同族被误示警（far 也锁定了 Dev）")
+        # 新协议实体无 name 字段，按类型统计 marker 盔甲架：
+        # 封闭区清场后仅可能有 NEAR_OK / FAR_OK 两个标记，数量即可区分。
+        stands = [e for e in ents["entities"] if "armor_stand" in e["type"]]
+        print(f"marker armor_stands => {stands}")
+        if not stands:
+            raise RuntimeError("4 格内同族未被示警（near 未锁定 Dev 为目标，无 NEAR_OK 标记）")
+        if len(stands) > 1:
+            raise RuntimeError("6 格外同族被误示警（far 也锁定了 Dev，出现 FAR_OK 标记）")
 
         step.ok("硬断言通过：4 格内同族被示警，6 格外未被示警")
         return 0

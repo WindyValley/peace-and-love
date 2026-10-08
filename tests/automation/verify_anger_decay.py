@@ -29,18 +29,12 @@ def wait_ready() -> None:
     while time.time() < deadline:
         try:
             status = rpc("client.status", timeout=2)
-            if "已进世界=true" in status:
+            if status["inWorld"]:
                 return
         except Exception:
             pass
         time.sleep(1)
     raise RuntimeError("进世界超时")
-
-
-def parse_pos(pos: str):
-    parts = pos.replace("位置", "").replace("(", "").replace(")", "").replace(",", " ").split()
-    nums = [p for p in parts if p.replace(".", "", 1).replace("-", "", 1).isdigit()]
-    return map(int, map(float, nums[:3]))
 
 
 def main() -> int:
@@ -66,10 +60,11 @@ def main() -> int:
         wait_ready()
 
         st = rpc("player.state")
-        if "死亡 是" in st:
+        if st["dead"]:
             rpc("player.respawn")
 
-        cx, cy, cz = parse_pos(rpc("player.pos"))
+        pos = rpc("player.pos")
+        cx, cy, cz = int(pos["x"]), int(pos["y"]), int(pos["z"])
 
         step.info("创建封闭测试区…")
         make_box(cx, cy, cz)
@@ -81,7 +76,15 @@ def main() -> int:
         time.sleep(2)
         rpc("player.moveToward", {"target": "zombie"})
         time.sleep(2)
-        rpc("player.attack", {"target": "zombie"}, timeout=5)
+        try:
+            rpc("player.attack", {"target": "zombie"}, timeout=5)
+        except RuntimeError:
+            # 超距/无目标/忙：稍后重试一次，不让单次未命中中断脱战验证
+            time.sleep(2)
+            try:
+                rpc("player.attack", {"target": "zombie"}, timeout=5)
+            except RuntimeError:
+                pass
         time.sleep(2)
 
         step.info("把玩家拉开到 32 格外，验证脱战恢复…")

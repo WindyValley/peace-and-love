@@ -29,7 +29,7 @@ def wait_world() -> None:
     while time.time() < deadline:
         try:
             status = rpc("client.status", timeout=2)
-            if "已进世界=true" in status:
+            if status["inWorld"]:
                 return
         except Exception:
             pass
@@ -60,13 +60,11 @@ def main() -> int:
         wait_world()
 
         st = rpc("player.state")
-        if "死亡 是" in st:
+        if st["dead"]:
             rpc("player.respawn")
 
         pos = rpc("player.pos")
-        parts = pos.replace("位置", "").replace("(", "").replace(")", "").replace(",", " ").split()
-        nums = [p for p in parts if p.replace(".", "", 1).replace("-", "", 1).isdigit()]
-        cx, cy, cz = map(int, map(float, nums[:3]))
+        cx, cy, cz = int(pos["x"]), int(pos["y"]), int(pos["z"])
 
         step.info("创建封闭测试区…")
         make_box(cx, cy, cz)

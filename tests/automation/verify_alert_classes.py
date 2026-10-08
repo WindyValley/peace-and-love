@@ -45,11 +45,9 @@ def log(*a):
 
 
 def player_xyz():
-    pos = rpc("player.pos")
-    m = re.search(r"\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)", pos)
-    if not m:
-        raise RuntimeError(f"解析玩家位置失败: {pos}")
-    return float(m.group(1)), float(m.group(2)), float(m.group(3))
+    # 新协议：player.pos 返回结构化 dict {x,y,z,...}（float）
+    p = rpc("player.pos")
+    return float(p["x"]), float(p["y"]), float(p["z"])
 
 
 def entity_pos(name):
@@ -116,15 +114,32 @@ def run_case(label, summon_type, attack_type, extra_nbt):
     pre_far = has_dev_target("far", "pre_far")
     log(f"攻击前 target: near={pre_near} far={pre_far}（都应为 False）")
 
-    # 真实攻击 target
+    # 真实攻击 target（新协议：成功返回结构化对象，错误 raise；超距/忙可重试）
     log(f"player.attackNearest {attack_type} ...")
-    res = rpc("player.attackNearest", {"target": attack_type})
-    log(f"  => {res}")
+    res = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            res = rpc("player.attackNearest", {"target": attack_type})
+            break
+        except RuntimeError as e:
+            last_err = e
+            log(f"  攻击异常（第 {attempt + 1} 次）: {e}")
+            if "[-32003]" in str(e) or "[-32004]" in str(e):
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            break
+    if res is not None:
+        log(f"  => hit={res['hit']} dist={res['distance']} reach={res['reach']} "
+            f"hp {res['hpBefore']}->{res['hpAfter']}")
+    else:
+        log(f"  => 攻击未成功: {last_err}")
     time.sleep(1.0)
 
     hp = entity_hp("target")
     log(f"target 剩余血量 {hp}")
-    hit = hp is not None and hp < 20.0
+    # 命中优先看协议 hit 字段，RCON 权威血量兜底
+    hit = bool(res is not None and res.get("hit")) or (hp is not None and hp < 20.0)
     if not hit:
         log("  ⚠ target 未掉血（可能挥空/冷却），本对照存疑")
 

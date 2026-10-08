@@ -64,8 +64,9 @@ def anger_source(name):
 
 
 def player_xyz():
-    m = re.search(r"\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)", rpc("player.pos"))
-    return float(m.group(1)), float(m.group(2)), float(m.group(3))
+    # 新协议：player.pos 返回结构化 dict {x,y,z,...}（float）
+    p = rpc("player.pos")
+    return float(p["x"]), float(p["y"]), float(p["z"])
 
 
 def hp(name):
@@ -98,9 +99,27 @@ def summon(name, x, iy, iz):
                 f"{{CustomName:'{{\"text\":\"{name}\"}}',PersistenceRequired:1b,NoAI:1b{extra}}}")
 
 
+def do_attack(target, tries=3):
+    """player.attackNearest：新协议成功返回结构化对象，错误 raise。
+    超距(-32003)/忙(-32004) 可重试；其他错误直接抛。"""
+    last = None
+    for i in range(tries):
+        try:
+            return rpc("player.attackNearest", {"target": target})
+        except RuntimeError as e:
+            last = e
+            msg = str(e)
+            if "[-32003]" in msg or "[-32004]" in msg:
+                time.sleep(1.5 * (i + 1))
+                continue
+            raise
+    raise last
+
+
 def main():
+    # 新协议：player.state 返回 dict，死亡看 st['dead']
     state = rpc("player.state")
-    if "死亡 是" in state:
+    if state["dead"]:
         rpc("player.respawn")
         time.sleep(2)
     server_rcon("gamerule doMobSpawning false")
@@ -149,7 +168,9 @@ def main():
             log(f"  攻击前 {n}: {anger_source(n)}")
 
         hp0 = hp("target")
-        log("attackNearest ->", rpc("player.attackNearest", {"target": TYPE}))
+        res = do_attack(TYPE)
+        log("attackNearest ->", f"hit={res['hit']} dist={res['distance']} reach={res['reach']} "
+            f"hp {res['hpBefore']}->{res['hpAfter']}")
         time.sleep(1.0)
         hp1 = hp("target")
 

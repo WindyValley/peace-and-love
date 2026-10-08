@@ -82,37 +82,34 @@ def stop_client() -> None:
         _gradlew_proc = None
 
 
-def _status_safe() -> str:
-    """安全拿 client.status,客户端未就绪时返回空串(不抛异常)。"""
+def _status_safe() -> dict | None:
+    """安全拿 client.status（结构化 dict），客户端未就绪时返回 None（不抛异常）。"""
     try:
         return rpc("client.status", timeout=3)
     except Exception:
-        return ""
+        return None
+
+
+def _in_world() -> bool:
+    st = _status_safe()
+    return bool(st and st["inWorld"])
 
 
 def _player_pos_safe() -> tuple[int, int, int]:
-    """拿玩家位置(整数),未进世界返回 (0,0,0)。
-
-    pos 返回格式(实际): "玩家 Dev 位于 (-9.5, -60.0, 3.5) 维度 minecraft:overworld 血量 20.0/20.0"
-    """
+    """拿玩家位置(整数)，未进世界返回 (0,0,0)。player.pos 为结构化 dict。"""
     try:
         pos = rpc("player.pos", timeout=3)
-        # 匹配第一个 (x, y, z) 三元组,数字可带小数和负号
-        m = re.search(r"\((-?\d+\.?\d*),\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)", pos)
-        if m:
-            return int(float(m.group(1))), int(float(m.group(2))), int(float(m.group(3)))
+        return int(pos["x"]), int(pos["y"]), int(pos["z"])
     except Exception:
         pass
     return 0, 0, 0
 
 
 def _player_pos_safe_float() -> tuple[float, float, float]:
-    """拿玩家位置(浮点),未进世界返回 (0,0,0)。"""
+    """拿玩家位置(浮点)，未进世界返回 (0.0,0.0,0.0)。player.pos 为结构化 dict。"""
     try:
         pos = rpc("player.pos", timeout=3)
-        m = re.search(r"\((-?\d+\.?\d*),\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)", pos)
-        if m:
-            return float(m.group(1)), float(m.group(2)), float(m.group(3))
+        return float(pos["x"]), float(pos["y"]), float(pos["z"])
     except Exception:
         pass
     return 0.0, 0.0, 0.0
@@ -145,14 +142,13 @@ def main() -> int:
         # 跳无障碍引导屏 + 连服务器
         if _attach_mode:
             # attach 模式:玩家应该已在世界里(或在 TitleScreen)。先查状态。
-            cur = _status_safe()
-            if "已进世界=true" not in cur:
+            if not _in_world():
                 # 不在世界里,尝试 connect
                 step.info("attach 模式但不在世界,尝试 connect…")
                 rpc("client.toTitle")
                 rpc("client.connect", {"host": "192.0.2.10", "port": 25565})
                 ok = wait_until(
-                    lambda: "已进世界=true" in _status_safe(),
+                    lambda: (_in_world(), ""),
                     timeout=60, interval=2, desc="进世界",
                 )
                 if not ok:
@@ -161,7 +157,7 @@ def main() -> int:
             rpc("client.toTitle")
             rpc("client.connect", {"host": "192.0.2.10", "port": 25565})
             ok = wait_until(
-                lambda: "已进世界=true" in _status_safe(),
+                lambda: (_in_world(), ""),
                 timeout=60, interval=2, desc="进世界",
             )
             if not ok:
@@ -169,7 +165,7 @@ def main() -> int:
         step.ok("已进世界")
 
         st = rpc("player.state")
-        if "死亡 是" in st:
+        if st["dead"]:
             rpc("player.respawn")
             time.sleep(1)
         step.ok("客户端已进世界")
@@ -219,10 +215,27 @@ def main() -> int:
         # 触发服务端 LivingHurtEvent → LivingEntityHurtMixin → KinAlerter。
         # 区别于 damage 命令(伪玩家攻击,不触发 hurt 事件,示警无效)。
         step.info("玩家用 attackNearest 自动寻路攻击 target…")
-        attack_result = rpc("player.attackNearest", {"target": "zombie"}, timeout=20)
+        # 新协议：成功返回结构化对象，协议错误 raise RuntimeError（消息含 [code]）。
+        # -32004 忙 / -32003 超距 / -32002 无目标 多为瞬时态，短暂等待后重试。
+        attack_result = None
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                attack_result = rpc("player.attackNearest", {"target": "zombie"}, timeout=20)
+                break
+            except RuntimeError as e:
+                last_err = e
+                msg = str(e)
+                if any(code in msg for code in ("[-32004]", "[-32003]", "[-32002]")):
+                    step.info(f"attackNearest 第 {attempt+1} 次未完成（{msg}），等待后重试…")
+                    time.sleep(2)
+                    continue
+                raise
+        if attack_result is None:
+            raise RuntimeError(f"attackNearest 三次均失败: {last_err}")
         step.info(f"attackNearest 返回: {attack_result}")
-        if attack_result.startswith("错误"):
-            raise RuntimeError(f"attackNearest 失败: {attack_result}")
+        if not attack_result.get("hit"):
+            step.info("attackNearest 返回 hit=False，以服务端权威血量复核（可能血量同步滞后）")
 
         # 确认真实命中:target 掉血(从 20 下降)
         time.sleep(0.5)

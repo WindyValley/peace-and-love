@@ -52,8 +52,9 @@ def anger(name):
 
 
 def player_xyz():
-    m = re.search(r"\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)", rpc("player.pos"))
-    return float(m.group(1)), float(m.group(2)), float(m.group(3))
+    # 新协议：player.pos 返回结构化 dict {x,y,z,...}（float）
+    p = rpc("player.pos")
+    return float(p["x"]), float(p["y"]), float(p["z"])
 
 
 def hp(name):
@@ -66,6 +67,23 @@ def pos(name):
     out = server_rcon(f"data get entity @e[name={name},limit=1] Pos")
     m = re.search(r"\[([-\d.]+)d,\s*([-\d.]+)d,\s*([-\d.]+)d\]", out)
     return (float(m.group(1)), float(m.group(2)), float(m.group(3))) if m else None
+
+
+def do_attack(target, tries=3):
+    """player.attackNearest：新协议成功返回结构化对象，错误 raise。
+    超距(-32003)/忙(-32004) 可重试；无目标(-32002) 不重试直接抛。"""
+    last = None
+    for i in range(tries):
+        try:
+            return rpc("player.attackNearest", {"target": target})
+        except RuntimeError as e:
+            last = e
+            msg = str(e)
+            if "[-32003]" in msg or "[-32004]" in msg:
+                time.sleep(1.5 * (i + 1))
+                continue
+            raise
+    raise last
 
 
 def summon(name, x, y, z):
@@ -98,7 +116,9 @@ def main():
         log(f"  攻击前: {{t={anger('target')} n={anger('near')} f={anger('far')}}}")
 
         hp0 = hp("target")
-        log("attack ->", rpc("player.attackNearest", {"target": TYPE}))
+        res = do_attack(TYPE)
+        log("attack ->", f"hit={res['hit']} dist={res['distance']} reach={res['reach']} "
+            f"hp {res['hpBefore']}->{res['hpAfter']}")
         time.sleep(1.0)
         post = {n: anger(n) for n in ("target", "near", "far")}
         log(f"  targetHP {hp0}->{hp('target')}  攻击后: {post}")

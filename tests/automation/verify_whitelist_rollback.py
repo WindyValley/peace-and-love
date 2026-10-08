@@ -79,6 +79,24 @@ def build_arena(ix, iy, iz):
     server_rcon(f"fill {ix} {iy} {iz} {ix+1} {iy+1} {iz} air")
 
 
+def attack_once():
+    """attackNearest 打一拳；忙(-32004)/超时(-32000) 退避重试，无目标(-32002) 直接失败。
+
+    新协议成功返回结构化对象，错误 raise RuntimeError。返回 (ok, detail)。
+    """
+    last = None
+    for _ in range(3):
+        try:
+            r = rpc("player.attackNearest", {"target": "zombie"}, timeout=20)
+            return True, r
+        except RuntimeError as e:
+            last = e
+            if "[-32002]" in str(e):
+                break
+            time.sleep(1.0)
+    return False, str(last)
+
+
 def probe_round(ix, iy, iz, label):
     """建隔间 → 封玩家 → 召唤 NoAI 僵尸 → 打一拳 → 返回 source。"""
     server_rcon("kill @e[name=wtest]")
@@ -90,10 +108,10 @@ def probe_round(ix, iy, iz, label):
         f"{{CustomName:'{{\"text\":\"wtest\"}}',PersistenceRequired:1b,NoAI:1b}}")
     time.sleep(0.8)
     try:
-        hit = rpc("player.attackNearest", {"target": "zombie"})
+        ok, detail = attack_once()
         time.sleep(0.6)
         src = anger_source("wtest")
-        log(f"  [{label}] attackNearest={hit} source={src}")
+        log(f"  [{label}] attackNearest ok={ok} ({detail}) source={src}")
         return src
     finally:
         server_rcon("kill @e[name=wtest]")
@@ -101,7 +119,8 @@ def probe_round(ix, iy, iz, label):
 
 
 def main():
-    if "死亡 是" in rpc("player.state"):
+    # 死亡检查（player.state 新协议为结构化 dict，死亡看 dead）
+    if rpc("player.state")["dead"]:
         rpc("player.respawn")
         time.sleep(2)
     server_rcon("gamerule doMobSpawning false")

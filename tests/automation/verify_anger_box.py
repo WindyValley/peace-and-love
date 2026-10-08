@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, r"D:\Coding\projects\mc-client-rpc\scripts")
-from combat_loop_test import rpc, server_rcon, read_client_log, _parse_hp, _player_hp, Step, stop_client, start_client
+from combat_loop_test import rpc, server_rcon, read_client_log, _player_hp, Step, stop_client, start_client
 
 PLAYER = "Dev"
 MOB = "minecraft:zombie"
@@ -50,24 +50,19 @@ def main() -> int:
         deadline = time.time() + 90
         while time.time() < deadline:
             status = rpc("client.status")
-            if "已进世界=true" in status:
+            if status["inWorld"]:
                 break
             time.sleep(1)
         else:
             raise RuntimeError("进世界超时")
 
         st = rpc("player.state")
-        if "死亡 是" in st:
+        if st["dead"]:
             rpc("player.respawn")
 
         pos = rpc("player.pos")
-        step.ok(f"玩家位置: {pos}")
-        # 解析坐标 "x y z"
-        parts = pos.replace("位置", "").replace("(", "").replace(")", "").replace(",", " ").split()
-        nums = [p for p in parts if p.replace(".", "", 1).replace("-", "", 1).isdigit()]
-        if len(nums) < 3:
-            raise RuntimeError(f"无法解析玩家坐标: {pos}")
-        cx, cy, cz = map(int, map(float, nums[:3]))
+        step.ok(f"玩家位置: ({pos['x']},{pos['y']},{pos['z']})")
+        cx, cy, cz = int(pos["x"]), int(pos["y"]), int(pos["z"])
 
         step.info("创建封闭测试区…")
         make_box(cx, cy, cz)
@@ -83,7 +78,7 @@ def main() -> int:
 
         ents = rpc("world.entities", {"radius": 16})
         step.ok(ents)
-        if "zombie" not in ents:
+        if not any("zombie" in e["type"] for e in ents["entities"]):
             raise RuntimeError("封闭区内未发现僵尸")
 
         step.info("攻击僵尸并观察玩家专属示警是否生效…")

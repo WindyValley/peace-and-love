@@ -76,3 +76,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# 真机测试的一次性诊断脚本与栈文件（正式脚本在 tests/automation 根目录）
+tests/automation/_temp/

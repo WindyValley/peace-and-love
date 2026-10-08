@@ -99,8 +99,9 @@ def run_case(mob_type, expect_far_alert):
     server_rcon("kill @e[type=marker]")
     time.sleep(0.5)
 
-    px, py, pz = (float(x) for x in re.search(
-        r"\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)", rpc("player.pos")).groups())
+    # 玩家位置（player.pos 新协议为结构化 dict）
+    ppos = rpc("player.pos")
+    px, py, pz = float(ppos["x"]), float(ppos["y"]), float(ppos["z"])
     # 测试台放玩家东侧 12 格，避免误入战斗
     ix, iy, iz = int(round(px)) + 12, int(round(py)), int(round(pz))
     log(f"\n=== {mob_type} === 台心 x={ix} y={iy} z={iz}")

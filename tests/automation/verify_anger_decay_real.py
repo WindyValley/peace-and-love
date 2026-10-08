@@ -102,8 +102,23 @@ def summon_target(ix, iy, iz):
 
 
 def attack_target():
-    """封进玩家隔间，attackNearest 直到 PLAYER_DIRECT。"""
-    return bool(rpc("player.attackNearest", {"target": "zombie"}))
+    """封进玩家隔间，attackNearest 打 target；攻击流程走完返回 True。
+
+    新协议：成功返回结构化对象，错误 raise RuntimeError（消息含 [code]）。
+    忙(-32004)/超时(-32000) 退避后重试；无目标(-32002) 重试无意义，直接失败。
+    """
+    last = None
+    for _ in range(3):
+        try:
+            rpc("player.attackNearest", {"target": "zombie"}, timeout=20)
+            return True
+        except RuntimeError as e:
+            last = e
+            if "[-32002]" in str(e):
+                break
+            time.sleep(1.0)
+    log(f"  attackNearest 失败: {last}")
+    return False
 
 
 def teardown_arena(ix, iy, iz):
@@ -170,9 +185,8 @@ def case_distance_decay(ix, iy, iz):
         server_rcon(f"tp Dev {far_x+0.5} {iy} {iz+0.5}")
         time.sleep(2.0)   # 脱战判定每 tick 跑，等它处理
 
-        # 确认玩家确实在远处
-        m = re.search(r"\((-?[\d.]+),", rpc("player.pos"))
-        px_now = float(m.group(1))
+        # 确认玩家确实在远处（player.pos 新协议为结构化 dict）
+        px_now = float(rpc("player.pos")["x"])
         dist = abs(px_now - (ix + 1.5))
         log(f"  玩家现在 x={px_now:.1f}，距目标 {dist:.1f} 格")
         if dist < 8:
@@ -191,8 +205,8 @@ def case_distance_decay(ix, iy, iz):
 
 
 def main():
-    # 死亡检查
-    if "死亡 是" in rpc("player.state"):
+    # 死亡检查（player.state 新协议为结构化 dict，死亡看 dead）
+    if rpc("player.state")["dead"]:
         rpc("player.respawn")
         time.sleep(2)
 
