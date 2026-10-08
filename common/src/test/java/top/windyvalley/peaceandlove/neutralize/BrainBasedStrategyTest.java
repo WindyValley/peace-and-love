@@ -9,11 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * T-NEUT-003：BrainBasedStrategy 分派与愤怒探针接线。
+ * T-NEUT-003：BrainBasedStrategy 分派边界。
  *
  * <p><b>未覆盖</b>：Brain 系 Mob（猪灵/监守者等）依赖 level、Brain 初始化、
- * 注册表，纯 JUnit 无法实例化，每 tick 擦除的实际效果移交真机验证。
- * 这里验证的是可分派的逻辑：supports 边界、angerProbe 接线语义。
+ * 注册表，纯 JUnit 无法实例化，一次性清理与源头拦截的实际效果移交真机验证。
+ * 这里验证的是可分派的逻辑：supports 边界。
  */
 class BrainBasedStrategyTest {
 
@@ -63,24 +63,5 @@ class BrainBasedStrategyTest {
             assertTrue(g != b,
                     () -> t + " 应只命中一个策略，goal=" + g + " brain=" + b);
         }
-    }
-
-    // ── angerProbe 接线语义 ──────────────────────────────────────
-
-    @Test
-    void 默认愤怒探针为非愤怒() {
-        BrainBasedStrategy s = new BrainBasedStrategy();
-        // 默认 probe = mob -> false：无法直接读私有字段，经反射核对语义
-        // 这里只验证 setAngerProbe(null) 不抛异常并重置为默认
-        s.setAngerProbe(null);
-    }
-
-    @Test
-    void 设置自定义愤怒探针() {
-        BrainBasedStrategy s = new BrainBasedStrategy();
-        s.setAngerProbe(mob -> true);
-        // 探针被设置后，tick 应因愤怒而跳过擦除——但 tick 需要真实 Mob，
-        // 此处仅验证接线不抛异常。实际擦除行为移交真机。
-        s.setAngerProbe(null);
     }
 }

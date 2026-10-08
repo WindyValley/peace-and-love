@@ -7,9 +7,74 @@
 - **路径**：`D:\Coding\projects\peace-and-love`
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
-- **最后更新**：2026-09-11
 
-## 当前阶段（2026-09-11 更新）
+- **最后更新**：2026-09-25
+
+---
+
+## 当前阶段（2026-09-25 更新）：中立化 / 愤怒 / 示警全链路完成
+
+**版本**：0.0.1（SemVer，正式发布前不使用 1.0.0）。仓库私有，未发布。
+
+### 本阶段核心成果
+
+**1. Brain 系中立化重构——从「每 tick 擦记忆」改为「写入源头拦截」。**
+
+旧方案每 tick 全服遍历怪、清攻击记忆，既耗性能又有探针漏接导致被打无法反击的隐患。现改为：
+
+- 字节码确认所有记忆写入汇聚到包私有方法 `setMemoryInternal`（无传感器旁路、无反射直改 Map），用 Mixin 在该方法 HEAD 设一道门控 {@code BrainAttackGate}；
+- 门控条件：攻击类记忆（`ATTACK_TARGET`，猪灵系另含 `ANGRY_AT`）+ 已中立化 + 当前非愤怒 → 取消写入；玩家攻击后愤怒已记录，门控读到「愤怒中」即放行反击；清空（eraseMemory）一律放行。
+- 旧的每 tick 擦除、愤怒探针、对应事件钩子整体删除。
+
+**2. Brain 系补齐同族示警语义（对齐 Goal 系 A/B/C）。**
+
+新增 `BrainKinAlerter`：玩家打一只 Brain 怪后，半径内同族中立怪标 `KIN_ALERT`（门控本就认此放行）并写入 `ATTACK_TARGET=攻击者`（猪灵系再写 `ANGRY_AT`），单层不级联。
+
+**3. 配套修复：**
+
+- `calmDown` 脱战除了 `setTarget(null)`，补擦 Brain 的 `ATTACK_TARGET/ANGRY_AT`，否则脱战后仍追击；
+- **「最后攻击玩家 UUID」兜底**：玩家跑远、目标不可达时原版会自清攻击记忆，导致距离脱战判定找不到玩家；mod 侧记录最后攻击者，据此找回玩家算距离，calmDown 清除；
+- 验证探针 `mob.anger` 改为遍历**所有维度**（原来写死主世界，地狱怪查不到），`getTarget` 为空时回退读 Brain 攻击记忆。
+
+### 真机验证（真客户端 + 专用服务器，非单测）
+
+Brain 系 6 种全部**双向**通过：
+
+| 怪 | 平时贴近 | 玩家先攻击 |
+|----|---------|-----------|
+| 猪灵 piglin | 不掉血 | 反击（HP→0）|
+| 猪灵蛮兵 piglin_brute | 不掉血 | 反击（HP→0）|
+| 疣猪兽 hoglin | 不掉血 | 反击（HP 20→2.3）|
+| 僵尸疣猪兽 zoglin | 不掉血 | 反击 |
+| 监守者 warden | 不掉血 | 反击（HP 17.8→0）|
+| 旋风人 breeze | 不被射（HP 恒 20）| 反击射击（HP 持续下降）|
+
+同族示警两轮（猪灵 / 疣猪兽）：同族定向 `KIN_ALERT`、异族不示警、二圈单层不级联、跑远脱战后 Brain 记忆全擦回中立——全绿。
+
+> 认知更正：早期「监守者 14s 不掉血=通过」判据偏弱（dump NBT 发现那只是原版愤怒低于攻击阈值）；最终以「攻击命中→服务端 HP 下降→玩家被反击」双向对照为准。
+
+### 分支（功能演进均不在 main 上，未开 PR）
+
+- `feat/brain-memory-source-gate`（已推 origin）：Brain 源头拦截 + 愤怒 + 示警，本阶段主线；
+- `chore/automation-test-scripts`（已推 origin）：真机测试脚本归位 `tests/automation/`；
+- `main`：干净，跟踪 `origin/main`。
+
+### 测试工具独立成仓
+
+真机自动化驱动（客户端 JSON-RPC、RCON、启停/部署脚本）独立为 **mc-client-rpc**（私有，`WindyValley/mc-client-rpc`）：
+
+- `feat/real-key-input`（已推）：移动/跳跃改为驱动**真实按键映射**（`options.keyUp/Down/Left/Right/Jump` 的 setDown），由原版 tick 自然驱动并发包；实测移动约 4.5 格/秒；
+- PAL 业务验证脚本不放在该仓（已迁回 PAL `tests/automation/`），通用驱动（`combat_loop_test.py`、`rcon.py`）留在该仓作单一来源。
+
+### 下一步（按优先级）
+
+1. **交易系统**：`trade/` 目前仅 package-info，零实现（Mixin 向 Mob 注入原版 Merchant，复用原版交易 GUI；spike 已验证可行）；
+2. **定价系统**：`pricing/` 仅 package-info（对数曲线 + 110 掉落物价格，spike 已算好待落地）；
+3. 末影龙（第三类自有 AI）暂缓；发布须用户显式确认。
+
+---
+
+## 历史阶段：Design（2026-09-11）
 
 **design 阶段已完成**，交付物：
 

@@ -10,16 +10,15 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * NeutralizationService 的组装正确性。
  *
  * <p>服务的核心价值是「按正确顺序组装策略表」：BrainBased 特例必须先于
- * GoalBased 兜底注册，否则 Brain 系生物会落入 GoalBased 而擦除失效。
+ * GoalBased 兜底注册，否则 Brain 系生物会落入 GoalBased 而拦截失效。
  * 这一组装逻辑可在 JUnit 验证。
  *
- * <p><b>未覆盖</b>：onEntityAdd/onLevelTick 依赖服务端运行时
+ * <p><b>未覆盖</b>：onEntityAdd 依赖服务端运行时
  * （Level、实体、事件触发），移交真机。
  */
 class NeutralizationServiceAssemblyTest {
@@ -57,15 +56,6 @@ class NeutralizationServiceAssemblyTest {
         NeutralizationService s = newService();
         assertInstanceOf(GoalBasedStrategy.class,
                 s.registry().strategyFor(EntityType.ZOMBIE));
-    }
-
-    @Test
-    void brainStrategy与注册表中为同一实例() {
-        NeutralizationService s = newService();
-        // AngerController 接线 anger 探针时，必须改到注册表里那同一个实例
-        assertSame(s.brainStrategy(),
-                s.registry().strategyFor(EntityType.PIGLIN),
-                "anger 探针要接到注册表内的同一 BrainBased 实例");
     }
 
     @Test

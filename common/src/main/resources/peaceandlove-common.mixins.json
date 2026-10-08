@@ -8,7 +8,8 @@
     "TargetGoalAccessor",
     "HurtByTargetGoalAccessor",
     "HurtByTargetGoalMixin",
-    "LivingEntityHurtMixin"
+    "LivingEntityHurtMixin",
+    "BrainMixin"
   ],
   "injectors": {
     "defaultRequire": 1

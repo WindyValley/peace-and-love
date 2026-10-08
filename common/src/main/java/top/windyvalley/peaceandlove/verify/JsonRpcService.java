@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -320,10 +321,18 @@ public final class JsonRpcService {
         String name = params.get("name").getAsString();
         java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
         server.execute(() -> {
+          try {
             Mob found = null;
-            for (Entity e : server.overworld().getAllEntities()) {
-                if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
-                    found = mob;
+            // 遍历所有维度（不能只看主世界）：地狱的 Brain 怪也要能查到，
+            // 否则 mob.anger 在跨维度验证时永远“找不到生物”。
+            for (ServerLevel level : server.getAllLevels()) {
+                for (Entity e : level.getAllEntities()) {
+                    if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
+                        found = mob;
+                        break;
+                    }
+                }
+                if (found != null) {
                     break;
                 }
             }
@@ -333,6 +342,23 @@ public final class JsonRpcService {
             }
             String source = AngerController.angerSourceOf(found).name();
             net.minecraft.world.entity.LivingEntity t = found.getTarget();
+            // Brain 怪目标在 ATTACK_TARGET 记忆里（getTarget 常为 null），
+            // getTarget 读不到时回退到记忆，保证 target 字段对 Brain 怪也准确。
+            if (t == null) {
+                net.minecraft.world.entity.ai.memory.MemoryModuleType<?> atType =
+                        net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET;
+                // Goal 系生物（如僵尸）的 Brain 未注册 attack_target：直接 getMemory 会抛
+                // IllegalStateException("Unregistered memory fetched")，让本查询任务挂掉。
+                // hasMemoryValue 对「未注册」和「无值」都安全返回 false。
+                if (found.getBrain().hasMemoryValue(atType)) {
+                    Object mem = found.getBrain()
+                            .getMemory((net.minecraft.world.entity.ai.memory.MemoryModuleType<Object>) atType)
+                            .orElse(null);
+                    if (mem instanceof net.minecraft.world.entity.LivingEntity le) {
+                        t = le;
+                    }
+                }
+            }
             String target;
             if (t == null) {
                 target = "none";
@@ -343,6 +369,11 @@ public final class JsonRpcService {
             }
             future.complete("source=" + source + ";target=" + target
                     + ";type=" + net.minecraft.world.entity.EntityType.getKey(found.getType()).getPath());
+          } catch (Exception ex) {
+            // 兜底：任何查询期异常都要完成 future，否则外层只得到无信息的"超时 null"，掩盖真因
+            future.complete("错误: 查询异常: " + ex.getClass().getSimpleName()
+                    + ": " + ex.getMessage());
+          }
         });
         try {
             return future.get(2, java.util.concurrent.TimeUnit.SECONDS);
