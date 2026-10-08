@@ -120,7 +120,11 @@ def spawn_round(victim, kin, nonkin, with_second_ring):
 
 
 def ensure_alive_platform():
-    if "死亡 是" in rpc("player.state"):
+    try:
+        dead = bool(rpc("player.state", timeout=5)["dead"])
+    except Exception:
+        dead = False
+    if dead:
         rpc("player.respawn")
         time.sleep(2.5)
     in_nether(f"tp Dev {PX} {PY} {PZ} -90 0")
@@ -140,7 +144,24 @@ def run_round(victim, kin, nonkin, with_second_ring, label):
     print("攻击前基线:", {n: anger(n)[0] for n in names})
 
     key = victim.split(":")[1]
-    print("攻击:", rpc("player.attack", {"target": key}).replace("\n", " "))
+    # 打 vic：必须真实命中（PLAYER_DIRECT 才成立），漂移则拉回重试
+    attacked = False
+    for _ in range(5):
+        pull(names)
+        time.sleep(0.5)
+        try:
+            atk = rpc("player.attack", {"target": key}, timeout=8)
+            print("攻击:", {k: atk[k] for k in ("target", "distance", "hpAfter", "hit")})
+        except Exception as e:
+            print("攻击失败（重试）:", str(e))
+            time.sleep(0.6)
+            continue
+        if atk.get("hit"):
+            attacked = True
+            break
+        time.sleep(0.6)
+    if not attacked:
+        raise RuntimeError("未能命中 vic，无法验证示警")
 
     # 保持几何 3s
     t0 = time.time()

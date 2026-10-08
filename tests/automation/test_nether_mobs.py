@@ -67,8 +67,11 @@ def anger_source():
 # ── 玩家/怪 ─────────────────────────────────────────────────
 
 def player_hp():
-    m = re.search(r"血量\s+([\d.]+)/", rpc("player.state"))
-    return float(m.group(1)) if m else None
+    """从结构化 player.state 读血量；连接/协议异常返回 None。"""
+    try:
+        return float(rpc("player.state", timeout=5)["health"])
+    except Exception:
+        return None
 
 
 def in_nether(cmd):
@@ -121,11 +124,16 @@ def phase_b(mob_key):
     for _ in range(5):
         pull_anchor()
         time.sleep(0.5)
-        r = rpc("player.attack", {"target": mob_key})
-        print("   攻击:", r.replace("\n", " "))
+        try:
+            atk = rpc("player.attack", {"target": mob_key}, timeout=8)
+            print("   攻击:", {k: atk[k] for k in ("target", "distance", "hpBefore", "hpAfter", "hit")})
+        except Exception as e:
+            print("   攻击失败（重试）:", str(e))
+            time.sleep(0.6)
+            continue
         time.sleep(1.0)
         src = anger_source()
-        if "超出" not in r and "错误" not in r and src == "PLAYER_DIRECT":
+        if atk.get("hit") and src == "PLAYER_DIRECT":
             hit = True
             break
         time.sleep(0.6)
@@ -146,7 +154,11 @@ def phase_b(mob_key):
 
 def ensure_alive():
     """玩家若死亡则复活（落在出生点，之后 tp 回平台），并治疗回满。"""
-    if "死亡 是" in rpc("player.state"):
+    try:
+        dead = bool(rpc("player.state", timeout=5)["dead"])
+    except Exception:
+        dead = False
+    if dead:
         rpc("player.respawn"); time.sleep(2.5)
     server_rcon("effect give Dev minecraft:instant_health")
     time.sleep(0.5)
