@@ -102,9 +102,22 @@ def main():
     px, py, pz = player_xyz()
     ix, iy, iz = int(round(px)), int(round(py)), int(round(pz))
     log(f"=== {TYPE} === ({ix},{iy},{iz})")
+
+    # 前置：被测类型必须已被中立化（在白名单里会保持原版、不示警，属另一测试范畴）。
+    # 残留的白名单条目（多为白名单测试未回滚干净）会导致误导性 FAIL，这里先确保移出。
+    try:
+        server_rcon(f"pal whitelist remove {TYPE}")
+    except Exception:
+        pass
+    time.sleep(0.4)
+
     try:
         # 宽平台，三怪 NoAI 定点：target +1 / near +3（距 target 2）/ far +9（距 target 8）
         server_rcon(f"fill {ix-2} {iy-1} {iz-4} {ix+11} {iy-1} {iz+4} stone")
+        # phantom 是亡灵，露天会持续自燃（血量/位置在双端漂移，污染攻击判定），
+        # 给它在头顶加一层遮光屋顶；清理时随上方残块一起清掉。
+        if TYPE == "phantom":
+            server_rcon(f"fill {ix-2} {iy+2} {iz-4} {ix+11} {iy+2} {iz+4} stone")
         summon("target", ix + 1, iy, iz)
         summon("near", ix + 3, iy, iz)
         summon("far", ix + 9, iy, iz)
