@@ -21,8 +21,10 @@
 用法：
     python scripts/verify_anger_kin_boundary_v2.py
 """
+import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -42,6 +44,36 @@ FAR_DIST = 8    # 必不被示警（>> 4.0 半径）
 
 # 客户端工程目录:peace-and-love(加载 pal mod + mc-client-rpc mod)
 PAL_DIR = Path(r"D:\Coding\projects\peace-and-love")
+
+PAL_RPC = ("192.0.2.10", 25585)
+_pal_seq = [0]
+
+
+def pal(method, params=None):
+    _pal_seq[0] += 1
+    req = {"jsonrpc": "2.0", "method": method, "params": params or {}, "id": _pal_seq[0]}
+    s = socket.create_connection(PAL_RPC, timeout=5)
+    try:
+        s.sendall((json.dumps(req) + "\n").encode())
+        s.settimeout(5)
+        buf = b""
+        while b"\n" not in buf:
+            c = s.recv(4096)
+            if not c:
+                break
+            buf += c
+        r = json.loads(buf.decode().strip())
+        return r.get("result") if "result" in r else r.get("error")
+    finally:
+        s.close()
+
+
+def anger_source(name):
+    r = pal("mob.anger", {"name": name})
+    if not isinstance(r, str) or "source=" not in r:
+        return None
+    m = re.search(r"source=(\w+)", r)
+    return m.group(1) if m else None
 
 # attach 模式:复用已启动的客户端(脚本不启动/不杀进程)
 _attach_mode = "--attach" in sys.argv
@@ -185,119 +217,59 @@ def main() -> int:
         if px == 0 and py == 0 and pz == 0:
             raise RuntimeError("拿不到玩家位置")
         step.info(f"玩家位置: ({px}, {py}, {pz})")
-        # 沿 +x 铺一条石头平台(py-1 层,宽 3),保证 target/near/far 同平面不坠崖。
-        # 洞穴地形在远处可能是空气,不铺会导致 far 掉到下一层(垂直距离污染判定)。
+        # 沿 +x 铺一条石头平台(py-1 层,宽 3),保证三怪同平面不坠崖。
         server_rcon(
             f"fill {px-1} {py-1} {pz-1} {px+FAR_DIST+2} {py-1} {pz+1} minecraft:stone"
         )
-        # target 在玩家旁 1 格(必最近)、near 在 3 格、far 在 8 格
-        # 注意:不能用 NoAI:1b(僵尸会失去 Goal,setTarget 无效)
-        # 改用短 sleep(0.5s)减少生成后乱跑
+        # 关键：先把玩家锚定到确定的块中心，否则整数截断的召唤坐标会相对
+        # 玩家真实亚格位置整体错位（实测攻击 dist=1.7 而非设计值，near 因此超 4 格）。
+        server_rcon(f"tp Dev {px+0.5} {py} {pz+0.5}")
+        time.sleep(1.0)
+        # 僵尸是 A 类：示警走【原版 HurtByTargetGoal→alertOthers】（再由 mixin 收窄半径），
+        # mod 不直接调 KinAlerter。因此绝不能加 NoAI——那会让 Goal 不运行、示警整条不发
+        # （实测 NoAI 时 near=NONE）。召唤后立刻攻击：0.5s 内僵尸几乎不动，
+        # target 距玩家 1.0（触及 3 内）、near 距 target 2.0（<4，示警，留 2 格裕量）、
+        # far 距 target 7.0（>4，不示警，留 3 格裕量）。判定读 mod 的 AngerController 标记。
         nbt_base = "{PersistenceRequired:1b,CustomName:'\"%s\"'}"
-        server_rcon(
-            f"summon minecraft:zombie {px+TARGET_DIST} {py} {pz} "
-            + nbt_base % "target"
-        )
-        server_rcon(
-            f"summon minecraft:zombie {px+NEAR_DIST} {py} {pz} "
-            + nbt_base % "near"
-        )
-        server_rcon(
-            f"summon minecraft:zombie {px+FAR_DIST} {py} {pz} "
-            + nbt_base % "far"
-        )
-        time.sleep(0.5)  # 短 sleep,减少乱跑
-        step.ok("三只测试怪已就位")
+        server_rcon(f"summon minecraft:zombie {px+1.5} {py} {pz+0.5} " + nbt_base % "target")
+        server_rcon(f"summon minecraft:zombie {px+3.5} {py} {pz+0.5} " + nbt_base % "near")
+        server_rcon(f"summon minecraft:zombie {px+8.5} {py} {pz+0.5} " + nbt_base % "far")
+        time.sleep(0.6)
+        step.ok("玩家已锚定块中心，三只测试怪就位")
 
         # ── 4. 玩家攻击 target（真实攻击,触发示警）───────────────
-        # 关键:用高级指令 player.attackNearest,自动寻路到触及范围再攻击。
-        # 它走真实攻击管线(mc.gameMode.attack → ServerboundInteractPacket),
-        # 触发服务端 LivingHurtEvent → LivingEntityHurtMixin → KinAlerter。
-        # 区别于 damage 命令(伪玩家攻击,不触发 hurt 事件,示警无效)。
-        step.info("玩家用 attackNearest 自动寻路攻击 target…")
-        # 新协议：成功返回结构化对象，协议错误 raise RuntimeError（消息含 [code]）。
-        # -32004 忙 / -32003 超距 / -32002 无目标 多为瞬时态，短暂等待后重试。
+        # 贴身 player.attack 打 target（走真实攻击管线触发 hurt hook/KinAlerter）。
+        # 不用 attackNearest：它会带着玩家寻路移动，污染后续判定。
         attack_result = None
-        last_err: Exception | None = None
-        for attempt in range(3):
+        last_err = None
+        for attempt in range(4):
             try:
-                attack_result = rpc("player.attackNearest", {"target": "zombie"}, timeout=20)
+                attack_result = rpc("player.attack", {"target": "zombie"}, timeout=8)
                 break
             except RuntimeError as e:
                 last_err = e
-                msg = str(e)
-                if any(code in msg for code in ("[-32004]", "[-32003]", "[-32002]")):
-                    step.info(f"attackNearest 第 {attempt+1} 次未完成（{msg}），等待后重试…")
-                    time.sleep(2)
-                    continue
-                raise
+                step.info(f"player.attack 失败（重试）: {e}")
+                time.sleep(1.2)
         if attack_result is None:
-            raise RuntimeError(f"attackNearest 三次均失败: {last_err}")
-        step.info(f"attackNearest 返回: {attack_result}")
+            raise RuntimeError(f"player.attack 多次失败: {last_err}")
+        step.info(f"player.attack: hit={attack_result['hit']} dist={attack_result['distance']}")
         if not attack_result.get("hit"):
-            step.info("attackNearest 返回 hit=False，以服务端权威血量复核（可能血量同步滞后）")
+            raise RuntimeError("攻击未命中 target，示警判定无意义")
 
-        # 确认真实命中:target 掉血(从 20 下降)
-        time.sleep(0.5)
-        hp_raw = server_rcon("data get entity @e[name=target,limit=1] Health")
-        m_hp = re.search(r"([\d.]+)f", hp_raw)
-        target_hp = float(m_hp.group(1)) if m_hp else 20.0
-        step.info(f"target 剩余血量: {target_hp}/20")
-        if target_hp >= 20.0:
-            raise RuntimeError("target 未掉血——攻击未命中服务端,示警判定无意义")
-
-        # 攻击后强制玩家停止移动(attackNearest 寻路有惯性),等玩家完全站定。
-        # 否则测量期间玩家滑行会抵消 near 的追击距离,污染行为信号。
-        rpc("player.stop", timeout=3)
+        # 等示警分发（KinAlerter 同步处理，给足余量）
         time.sleep(1.5)
 
-        # ── 5. 硬断言：示警行为信号 ────────────────────────────
-        # 原理:被示警的 zombie(setTarget=Dev)会激活 MeleeAttackGoal 寻路追击玩家,
-        # 未被示警的 zombie 无 target、原地闲置随机游荡(位移极小)。
-        # 测攻击前/后 near、far 到玩家的距离变化(服务端 data get,权威)。
-        step.info("测量 near/far 示警后是否追击玩家(行为信号)…")
-        time.sleep(0.5)
-
-        def entity_pos(name: str):
-            raw = server_rcon(f"data get entity @e[name={name},limit=1] Pos")
-            m = re.search(r"\[(-?[\d.]+)d?,?\s*(-?[\d.]+)d?,?\s*(-?[\d.]+)d?\]", raw)
-            if not m:
-                raise RuntimeError(f"解析 {name} 位置失败: {raw}")
-            return float(m.group(1)), float(m.group(2)), float(m.group(3))
-
-        def horiz_dist(a, b):
-            return ((a[0]-b[0])**2 + (a[2]-b[2])**2) ** 0.5
-
-        p0 = _player_pos_safe_float()
-        n0 = entity_pos("near")
-        f0 = entity_pos("far")
-        d_near0 = horiz_dist(n0, p0)
-        d_far0 = horiz_dist(f0, p0)
-        step.info(f"攻击前: 玩家{p0} near{n0}({d_near0:.1f}格) far{f0}({d_far0:.1f}格)")
-
-        # 观察 2.5s:被示警 zombie 会明显逼近(>1格),闲置 zombie 几乎不动
-        time.sleep(2.5)
-        p1 = _player_pos_safe_float()
-        n1 = entity_pos("near")
-        f1 = entity_pos("far")
-        d_near1 = horiz_dist(n1, p1)
-        d_far1 = horiz_dist(f1, p1)
-        step.info(f"攻击后: 玩家{p1} near{n1}({d_near1:.1f}格) far{f1}({d_far1:.1f}格)")
-
-        near_approach = d_near0 - d_near1  # 正=逼近玩家
-        far_approach = d_far0 - d_far1
-        step.info(f"near 逼近 {near_approach:+.2f} 格 / far 逼近 {far_approach:+.2f} 格")
-
-        # near 必被示警:2.5s 内应明显追击(>1 格);far 必不示警:几乎不动(<1 格)
-        if near_approach < 1.0:
+        # ── 5. 判定：直接读 mod 的 AngerController 标记 ───────────
+        # 不看怪是否移动（NoAI 本就不动，且玩家移动会污染相对位移）。
+        s_t = anger_source("target")
+        s_n = anger_source("near")
+        s_f = anger_source("far")
+        step.info(f"anger target={s_t} near={s_n} far={s_f}")
+        if not (s_t == "PLAYER_DIRECT" and s_n == "KIN_ALERT" and s_f == "NONE"):
             raise RuntimeError(
-                f"{NEAR_DIST} 格内同族未被示警（near 未追击玩家，仅逼近 {near_approach:.2f} 格）"
-            )
-        if far_approach > 1.0:
-            raise RuntimeError(
-                f"{FAR_DIST} 格外同族被误示警（far 也在追击，逼近 {far_approach:.2f} 格）"
-            )
-        step.ok(f"硬断言通过：{NEAR_DIST} 格被示警(追击{near_approach:.1f}格) / {FAR_DIST} 格未示警({far_approach:+.1f}格)")
+                f"示警边界不符：target={s_t}(应PLAYER_DIRECT) "
+                f"near={s_n}(应KIN_ALERT) far={s_f}(应NONE)")
+        step.ok(f"硬断言通过：target 直接仇恨 / {NEAR_DIST} 格被示警 / {FAR_DIST} 格未示警")
         return 0
     finally:
         # ── 清理（幂等）─────────────────────────────────────────
