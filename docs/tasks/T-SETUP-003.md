@@ -1,5 +1,6 @@
-- [ ] T-SETUP-003: 包结构与分层骨架
+- [x] T-SETUP-003: 包结构与分层骨架
 
+**完成备注：** 七包 + 7 个 package-info + PeaceAndLove 入口齐备，双端可编译
 **优先级：** P0
 **预估：** 2h
 **Owner：** agent
@@ -16,10 +17,10 @@
 
 ## 验收标准
 
-- [ ] 创建 `config/` `scope/` `pricing/` `trade/` `neutralize/` `anger/` `mixin/` 七个包
-- [ ] 每个包有 `package-info.java` 说明职责与依赖方向
-- [ ] `PeaceAndLove.java` 入口类可被两端初始化器调用
-- [ ] 编译通过
+- [x] 创建 `config/` `scope/` `pricing/` `trade/` `neutralize/` `anger/` `mixin/` 七个包
+- [x] 每个包有 `package-info.java` 说明职责与依赖方向
+- [x] `PeaceAndLove.java` 入口类可被两端初始化器调用
+- [x] 编译通过
 
 ## 技术要点
 

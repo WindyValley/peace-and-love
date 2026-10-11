@@ -1,5 +1,6 @@
-- [ ] T-SETUP-002: Git 仓库初始化
+- [x] T-SETUP-002: Git 仓库初始化
 
+**完成备注：** commit a65b953 仓库初始化；.gitignore 覆盖 build/.gradle/run/*.log/.idea 与 spikes jar/mappings（git check-ignore 已核实），默认 main
 **优先级：** P0
 **预估：** 1h
 **Owner：** agent
@@ -16,10 +17,10 @@
 
 ## 验收标准
 
-- [ ] `git init` 且默认分支为 `main`
-- [ ] `.gitignore` 覆盖 `build/` `.gradle/` `run/` `*.log` `.idea/`
-- [ ] `spikes/` 下的 jar 与 mappings 大文件被忽略（`server-*.jar` / `server_mappings.txt`）
-- [ ] 首次提交成功，`git status` 干净
+- [x] `git init` 且默认分支为 `main`
+- [x] `.gitignore` 覆盖 `build/` `.gradle/` `run/` `*.log` `.idea/`
+- [x] `spikes/` 下的 jar 与 mappings 大文件被忽略（`server-*.jar` / `server_mappings.txt`）
+- [x] 首次提交成功，`git status` 干净
 
 ## 技术要点
 
