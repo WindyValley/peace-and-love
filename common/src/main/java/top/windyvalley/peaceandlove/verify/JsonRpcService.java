@@ -163,6 +163,7 @@ public final class JsonRpcService {
             case "server.status" -> serverStatus();
             case "verify.retaliation" -> verifyRetaliation(params);
             case "mob.anger" -> mobAnger(params);
+            case "pricing.scan" -> pricingScan();
             default -> throw new IllegalArgumentException("未知方法: " + method);
         };
     }
@@ -292,6 +293,41 @@ public final class JsonRpcService {
                     e.getType().toString(), e.getX(), e.getY(), e.getZ(), player.distanceTo(e)));
         }
         return sb.toString();
+    }
+
+    /**
+     * T-PRICE-001 真机探针：用数据包加载后的运行时战利品表扫描全部适配生物，
+     * 返回每条掉落的 epk/countMax，供离线比对 spike 黄金基线 final_pricing_128.json。
+     *
+     * <p>必须走真机（而非单测 codec 解析）：enchanted_count_increase 等条件的
+     * codec 依赖动态注册表 enchantment，纯 Bootstrap 单测构造不出 RegistryAccess；
+     * 服务端 reloadableRegistries 已含全部数据包注册表，是唯一权威来源。
+     */
+    private Object pricingScan() {
+        var registries = server.reloadableRegistries();
+        top.windyvalley.peaceandlove.pricing.LootTableScanner scanner =
+                new top.windyvalley.peaceandlove.pricing.LootTableScanner();
+        top.windyvalley.peaceandlove.pricing.LootTableScanner.ScanResult result =
+                scanner.scan(top.windyvalley.peaceandlove.scope.AdaptedMobs.ALL,
+                        type -> registries.getLootTable(type.getDefaultLootTable()));
+
+        java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (top.windyvalley.peaceandlove.pricing.LootTableScanner.DropEntry e : result.entries()) {
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("entity", e.entityId().getPath());
+            row.put("item", e.itemId().getPath());
+            row.put("epk", e.epk());
+            row.put("count_max", e.countMax());
+            row.put("approximated", e.approximated());
+            rows.add(row);
+        }
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("scanned", top.windyvalley.peaceandlove.scope.AdaptedMobs.count());
+        out.put("entries", result.entries().size());
+        out.put("elapsed_ms", result.elapsedMillis());
+        out.put("warnings", result.warnings());
+        out.put("rows", rows);
+        return out;
     }
 
     private String serverStatus() {
