@@ -9,7 +9,8 @@
     "HurtByTargetGoalAccessor",
     "HurtByTargetGoalMixin",
     "LivingEntityHurtMixin",
-    "BrainMixin"
+    "BrainMixin",
+    "MobMerchantMixin"
   ],
   "injectors": {
     "defaultRequire": 1
