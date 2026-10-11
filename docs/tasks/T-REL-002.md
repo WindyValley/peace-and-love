@@ -1,6 +1,5 @@
-# T-REL-002: README 中英双语
+- [ ] T-REL-002: README 中英双语
 
-**状态：** todo
 **优先级：** P0
 **预估：** 4h
 **Owner：** 人工 + agent

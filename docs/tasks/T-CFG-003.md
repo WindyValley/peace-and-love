@@ -1,6 +1,5 @@
-# T-CFG-003: /pal reload 热重载命令
+- [ ] T-CFG-003: /pal reload 热重载命令
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

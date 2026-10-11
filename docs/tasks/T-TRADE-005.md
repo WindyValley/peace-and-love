@@ -1,6 +1,5 @@
-# T-TRADE-005: NBT 持久化
+- [ ] T-TRADE-005: NBT 持久化
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

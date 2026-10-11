@@ -1,6 +1,5 @@
-# T-NEUT-001: NeutralizeStrategy 接口与 GoalSnapshot
+- [ ] T-NEUT-001: NeutralizeStrategy 接口与 GoalSnapshot
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

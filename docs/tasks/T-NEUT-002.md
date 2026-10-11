@@ -1,6 +1,5 @@
-# T-NEUT-002: GoalBasedStrategy（32 个 Goal 系）
+- [x] T-NEUT-002: GoalBasedStrategy（32 个 Goal 系）
 
-**状态：** done
 **优先级：** P0
 **预估：** 6h
 **Owner：** agent

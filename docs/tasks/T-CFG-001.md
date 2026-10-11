@@ -1,6 +1,5 @@
-# T-CFG-001: PalConfig 数据类与默认值
+- [ ] T-CFG-001: PalConfig 数据类与默认值
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

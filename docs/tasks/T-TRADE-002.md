@@ -1,6 +1,5 @@
-# T-TRADE-002: TradeOfferBuilder 构建交易列表
+- [ ] T-TRADE-002: TradeOfferBuilder 构建交易列表
 
-**状态：** todo
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent

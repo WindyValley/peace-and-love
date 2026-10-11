@@ -1,6 +1,5 @@
-# T-SETUP-004: GitHub Actions 双端构建 CI
+- [ ] T-SETUP-004: GitHub Actions 双端构建 CI
 
-**状态：** todo
 **优先级：** P1
 **预估：** 3h
 **Owner：** agent

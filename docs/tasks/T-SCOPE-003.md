@@ -1,6 +1,5 @@
-# T-SCOPE-003: 未适配生物的 INFO 日志提示
+- [ ] T-SCOPE-003: 未适配生物的 INFO 日志提示
 
-**状态：** todo
 **优先级：** P2
 **预估：** 1h
 **Owner：** agent

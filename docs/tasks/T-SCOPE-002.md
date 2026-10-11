@@ -1,6 +1,5 @@
-# T-SCOPE-002: NeutralizationScope 门控判定
+- [ ] T-SCOPE-002: NeutralizationScope 门控判定
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

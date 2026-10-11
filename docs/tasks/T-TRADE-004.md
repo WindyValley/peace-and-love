@@ -1,6 +1,5 @@
-# T-TRADE-004: RestockManager 每日补货
+- [ ] T-TRADE-004: RestockManager 每日补货
 
-**状态：** todo
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent

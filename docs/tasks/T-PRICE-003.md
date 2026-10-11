@@ -1,6 +1,5 @@
-# T-PRICE-003: PriceTable 启动时构建与缓存
+- [ ] T-PRICE-003: PriceTable 启动时构建与缓存
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

@@ -1,6 +1,5 @@
-# T-SETUP-002: Git 仓库初始化
+- [ ] T-SETUP-002: Git 仓库初始化
 
-**状态：** todo
 **优先级：** P0
 **预估：** 1h
 **Owner：** agent

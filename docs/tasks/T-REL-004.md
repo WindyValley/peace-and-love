@@ -1,6 +1,5 @@
-# T-REL-004: Modrinth / CurseForge 页面文案
+- [ ] T-REL-004: Modrinth / CurseForge 页面文案
 
-**状态：** todo
 **优先级：** P0
 **预估：** 4h
 **Owner：** 人工 + agent

@@ -1,6 +1,5 @@
-# T-SCOPE-001: AdaptedMobs 38 个常量
+- [ ] T-SCOPE-001: AdaptedMobs 38 个常量
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent

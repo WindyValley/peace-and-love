@@ -1,6 +1,6 @@
-# T-PRICE-001: LootTableScanner 解析战利品表算 epk
+- [x] T-PRICE-001: LootTableScanner 解析战利品表算 epk
 
-**状态：** done（2026-10-11，纯算法单测 + 真机黄金回归全绿）
+**完成备注：** 2026-10-11，纯算法单测 + 真机黄金回归全绿
 **优先级：** P0
 **预估：** 6h
 **Owner：** agent

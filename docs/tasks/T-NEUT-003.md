@@ -1,6 +1,5 @@
-# T-NEUT-003: BrainBasedStrategy（6 个 Brain 系）
+- [ ] T-NEUT-003: BrainBasedStrategy（6 个 Brain 系）
 
-**状态：** todo
 **优先级：** P0
 **预估：** 6h
 **Owner：** agent

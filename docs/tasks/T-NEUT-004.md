@@ -1,6 +1,5 @@
-# T-NEUT-004: restore() 可逆还原
+- [ ] T-NEUT-004: restore() 可逆还原
 
-**状态：** todo
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
