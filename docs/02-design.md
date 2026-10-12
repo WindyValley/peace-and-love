@@ -351,25 +351,49 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override
     public MerchantOffers getOffers() {
         Mob self = (Mob)(Object) this;
-        if (pal$offers == null) {
-            pal$offers = TradeOfferBuilder.build(self.getType());
+        if (self.level().isClientSide) return pal$offers == null ? pal$EMPTY : pal$offers;
+        if (!NeutralizationScope.canTrade(self.getType(), cfg)) return pal$EMPTY;  // 零分配
+        PriceTable table = PeaceAndLove.priceTable().table();
+        // 定价表 reload 后实例身份变化 → 已存在生物也懒重建（uses 归零，补货落地前接受）
+        if (pal$offers == null || pal$offersTable != table) {
+            pal$offers = TradeOfferBuilder.assemble(self.getType(), cfg, table);
+            pal$offersTable = table;
         }
-        RestockManager.tick(self, pal$offers);   // 每日补货
-        return pal$offers;
+        return pal$offers;   // RestockManager.tick（T-TRADE-004）每日补货，后续接入
     }
 
-    /** 右键交互 → 复用原版 default 实现的 openTradingScreen */
+    /**
+     * 右键交互 → 打开原版交易 GUI（T-TRADE-003，已真机验证）。
+     *
+     * 关键：服务端权威，客户端【完全不干预】。客户端物理端没有服务端配置 /
+     * 仇恨 / 报价（Brain 记忆不与客户端同步），在客户端猜门控会对村民等未适配
+     * 实体产生错误 SUCCESS 预测；开界面完全由服务端 openTradingScreen 的
+     * openMenu + ClientboundMerchantOffersPacket 驱动，天然支持客户端不装 mod。
+     *
+     * 门控真值表抽到纯函数 TradeInteraction.evaluate 单测覆盖，这里只抽取事实。
+     */
     @Inject(method = "mobInteract", at = @At("HEAD"), cancellable = true)
-    private void pal$onInteract(Player player, InteractionHand hand,
-                                CallbackInfoReturnable<InteractionResult> cir) {
+    private void pal$onMobInteract(Player player, InteractionHand hand,
+                                   CallbackInfoReturnable<InteractionResult> cir) {
         Mob self = (Mob)(Object) this;
-        if (!NeutralizationScope.canTrade(self.getType())) return;
-        if (AngerController.isAngry(self))                 return;   // 敌对时不能交易
-        if (level().isClientSide) { cir.setReturnValue(InteractionResult.SUCCESS); return; }
+        if (self.level().isClientSide) return;                 // 客户端放行原版 PASS
 
-        setTradingPlayer(player);
-        openTradingScreen(player, self.getDisplayName(), 1);   // ★ 原版 default 实现
-        cir.setReturnValue(InteractionResult.CONSUME);
+        boolean bothHandsEmpty =
+                player.getItemInHand(MAIN_HAND).isEmpty()
+             && player.getItemInHand(OFF_HAND).isEmpty();
+        Decision d = TradeInteraction.evaluate(
+                NeutralizationScope.canTrade(self.getType(), cfg),  // 适配+白名单+开关+boss
+                AngerController.isAngry(self),                    // 三路仇恨，见 §4.2/AngerController
+                self.isAlive(),
+                getTradingPlayer() == null,                       // 防 interactAt+interact 重复开窗
+                bothHandsEmpty,                                   // 持物保留原版交互
+                !getOffers().isEmpty());                          // 空报价=没货
+        if (d == FALL_THROUGH) return;                           // 不注入，保持原版
+        if (hand == MAIN_HAND && d == OPEN) {
+            setTradingPlayer(player);
+            openTradingScreen(player, self.getDisplayName(), 0); // ★ 原版 default 实现
+        }
+        cir.setReturnValue(InteractionResult.CONSUME);           // OPEN 与 EMPTY_OFFERS 都吞交互
     }
 
     /** NBT 持久化：只需存 lastRestockDay，offers 由原版 CODEC 覆盖 */

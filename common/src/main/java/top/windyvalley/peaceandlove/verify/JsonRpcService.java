@@ -164,6 +164,7 @@ public final class JsonRpcService {
             case "verify.retaliation" -> verifyRetaliation(params);
             case "mob.anger" -> mobAnger(params);
             case "pricing.scan" -> pricingScan();
+            case "trade.probe" -> tradeProbe(params);
             default -> throw new IllegalArgumentException("未知方法: " + method);
         };
     }
@@ -413,6 +414,92 @@ public final class JsonRpcService {
         });
         try {
             return future.get(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return "错误: 主线程查询超时: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 交易链路探针（T-TRADE-003 真机定位）：读服务端一只命名怪的交易就绪状态。
+     *
+     * <p>params: {"name":"ttest","open":false}。返回结构化串：
+     * merchant=实例是否实现了注入的 Merchant 接口；canTrade=门控；
+     * angry=AngerController.isAngry；offers=getOffers().size()；
+     * open=true 时额外直接调 setTradingPlayer+openTradingScreen（绕过 mobInteract
+     * 注入，二分定位「是注入没触发」还是「开菜单本身失败」），回 openResult。
+     */
+    private String tradeProbe(JsonObject params) {
+        if (server == null) {
+            return "错误: 服务端未就绪";
+        }
+        if (!params.has("name")) {
+            return "错误: 缺少 name 参数";
+        }
+        String name = params.get("name").getAsString();
+        boolean doOpen = params.has("open") && params.get("open").getAsBoolean();
+        java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
+        server.execute(() -> {
+            try {
+                Mob found = null;
+                for (ServerLevel level : server.getAllLevels()) {
+                    for (Entity e : level.getAllEntities()) {
+                        if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
+                            found = mob;
+                            break;
+                        }
+                    }
+                    if (found != null) {
+                        break;
+                    }
+                }
+                if (found == null) {
+                    future.complete("错误: 找不到名为 " + name + " 的生物");
+                    return;
+                }
+                var cfg = PeaceAndLove.config().get();
+                boolean merchant = found instanceof net.minecraft.world.item.trading.Merchant;
+                boolean canTrade = top.windyvalley.peaceandlove.scope.NeutralizationScope
+                        .canTrade(found.getType(), cfg);
+                boolean angry = AngerController.isAngry(found);
+                StringBuilder sb = new StringBuilder();
+                sb.append("merchant=").append(merchant)
+                        .append(";canTrade=").append(canTrade)
+                        .append(";angry=").append(angry)
+                        .append(";alive=").append(found.isAlive())
+                        .append(";noai=").append(found.isNoAi());
+                int n = -1;
+                if (merchant) {
+                    try {
+                        n = ((net.minecraft.world.item.trading.Merchant) found).getOffers().size();
+                    } catch (Exception ex) {
+                        sb.append(";offersError=").append(ex.getClass().getSimpleName());
+                    }
+                }
+                sb.append(";offers=").append(n);
+                if (doOpen && merchant) {
+                    try {
+                        ServerPlayer sp = getFirstPlayer();
+                        if (sp == null) {
+                            sb.append(";openResult=no_player");
+                        } else {
+                            net.minecraft.world.item.trading.Merchant m =
+                                    (net.minecraft.world.item.trading.Merchant) found;
+                            m.setTradingPlayer(sp);
+                            m.openTradingScreen(sp, found.getDisplayName(), 0);
+                            sb.append(";openResult=invoked");
+                        }
+                    } catch (Exception ex) {
+                        sb.append(";openResult=EX:").append(ex.getClass().getSimpleName())
+                                .append(":").append(ex.getMessage());
+                    }
+                }
+                future.complete(sb.toString());
+            } catch (Exception ex) {
+                future.complete("错误: 查询异常: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            }
+        });
+        try {
+            return future.get(3, java.util.concurrent.TimeUnit.SECONDS);
         } catch (Exception e) {
             return "错误: 主线程查询超时: " + e.getMessage();
         }

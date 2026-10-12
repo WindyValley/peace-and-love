@@ -2,6 +2,8 @@ package top.windyvalley.peaceandlove.mixin;
 
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -10,8 +12,15 @@ import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.windyvalley.peaceandlove.PeaceAndLove;
+import top.windyvalley.peaceandlove.anger.AngerController;
+import top.windyvalley.peaceandlove.config.PalConfig;
+import top.windyvalley.peaceandlove.pricing.PriceTable;
 import top.windyvalley.peaceandlove.scope.NeutralizationScope;
+import top.windyvalley.peaceandlove.trade.TradeInteraction;
 import top.windyvalley.peaceandlove.trade.TradeOfferBuilder;
 
 /**
@@ -44,6 +53,10 @@ public abstract class MobMerchantMixin implements Merchant {
     @Unique
     private MerchantOffers pal$offers;
 
+    /** 当前 pal$offers 基于的定价表实例；表随定价配置 reload 重建后身份变化，据此懒重建报价。 */
+    @Unique
+    private PriceTable pal$offersTable;
+
     /** 上次补货所在的游戏日（day time / 24000）；补货逻辑在后续 T-TRADE 任务接入。 */
     @Unique
     private long pal$lastRestockDay;
@@ -60,24 +73,23 @@ public abstract class MobMerchantMixin implements Merchant {
 
     @Override
     public MerchantOffers getOffers() {
-        if (this.pal$offers == null) {
-            Mob self = (Mob) (Object) this;
-            // 客户端侧拿不到服务端配置，且客户端只在交易 GUI 已打开时才读报价；
-            // 报价由服务端菜单同步，客户端 Mob 自身懒初始化无意义。
-            if (self.level().isClientSide) {
-                return pal$EMPTY;
-            }
-            if (!NeutralizationScope.canTrade(self.getType(), PeaceAndLove.config().get())) {
-                return pal$EMPTY;
-            }
-            // T-TRADE-002.2：从定价表组装整份报价（门控组装器内部再过一遍 canTrade）。
-            // 懒加载一次后缓存在 pal$offers —— MerchantOffer 的 uses 是这只怪物各自的
-            // 交易/补货状态，必须每只一份、长期持有。锚点 reload 后旧生物报价的刷新机制
-            // 随右键交易链（T-TRADE-003）/补货一起处理。
-            this.pal$offers = TradeOfferBuilder.assemble(
-                    self.getType(),
-                    PeaceAndLove.config().get(),
-                    PeaceAndLove.priceTable().table());
+        Mob self = (Mob) (Object) this;
+        // 客户端侧拿不到服务端配置，且客户端只在交易 GUI 已打开时才读报价；
+        // 报价由服务端菜单同步，客户端 Mob 自身懒初始化无意义。
+        if (self.level().isClientSide) {
+            return pal$offers == null ? pal$EMPTY : pal$offers;
+        }
+        PalConfig cfg = PeaceAndLove.config().get();
+        if (!NeutralizationScope.canTrade(self.getType(), cfg)) {
+            return pal$EMPTY;
+        }
+        PriceTable table = PeaceAndLove.priceTable().table();
+        // T-TRADE-003：定价表因锚点/override reload 重建（实例身份变化）后，
+        // 已存在生物也要拿到新报价 —— 懒重建。代价是 reload 后 uses（当日购买
+        // 次数）归零；补货机制（T-TRADE-004）落地前接受这一行为。
+        if (this.pal$offers == null || this.pal$offersTable != table) {
+            this.pal$offers = TradeOfferBuilder.assemble(self.getType(), cfg, table);
+            this.pal$offersTable = table;
         }
         return this.pal$offers;
     }
@@ -120,6 +132,54 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override
     public boolean isClientSide() {
         return ((Mob) (Object) this).level().isClientSide;
+    }
+
+    /**
+     * 右键交互 → 打开原版交易 GUI（T-TRADE-003）。
+     *
+     * <p><b>服务端权威，客户端不干预。</b>门控真值表在
+     * {@link TradeInteraction#evaluate} 纯逻辑里单测覆盖，Mixin 只抽取事实：
+     * <ul>
+     *   <li>客户端物理端没有服务端配置/仇恨/报价（Brain 记忆与 AngerController
+     *       状态都不同步），在这里猜门控只会对村民等未适配实体产生错误的 SUCCESS
+     *       预测；故客户端直接放行（保持原版 PASS），开界面完全由服务端
+     *       openTradingScreen 的 openMenu + 报价同步包驱动 —— 不依赖客户端返回值；</li>
+     *   <li>服务端不满足条件（未适配/白名单/开关关/Boss 开关关/仇恨中/死亡/
+     *       已在交易/手持物品）→ 不注入返回值，保持原版交互；</li>
+     *   <li>条件满足但无报价 → 吞掉交互不开界面（村民「没货」同款 CONSUME）；</li>
+     *   <li>有报价 → {@code setTradingPlayer + openTradingScreen}（default 实现走
+     *       MerchantMenu + ClientboundMerchantOffersPacket），返回 CONSUME。</li>
+     * </ul>
+     *
+     * <p>客户端对同一次右键会先发 interactAt 再发 interact 两个包，服务端都汇到
+     * 本方法；{@code getTradingPlayer()!=null} 守卫与村民 isTrading() 同义，
+     * 防止同一 tick 重复 openMenu。
+     */
+    @Inject(method = "mobInteract", at = @At("HEAD"), cancellable = true)
+    private void pal$onMobInteract(Player player, InteractionHand hand,
+                                   CallbackInfoReturnable<InteractionResult> cir) {
+        Mob self = (Mob) (Object) this;
+        // 客户端不干预：不猜服务端状态，保持原版 PASS（连村民等未适配实体也零影响）。
+        if (self.level().isClientSide) {
+            return;
+        }
+        boolean bothHandsEmpty = player.getItemInHand(InteractionHand.MAIN_HAND).isEmpty()
+                && player.getItemInHand(InteractionHand.OFF_HAND).isEmpty();
+        TradeInteraction.Decision decision = TradeInteraction.evaluate(
+                NeutralizationScope.canTrade(self.getType(), PeaceAndLove.config().get()),
+                AngerController.isAngry(self),
+                self.isAlive(),
+                getTradingPlayer() == null,
+                bothHandsEmpty,
+                !getOffers().isEmpty());
+        if (decision == TradeInteraction.Decision.FALL_THROUGH) {
+            return;
+        }
+        if (hand == InteractionHand.MAIN_HAND && decision == TradeInteraction.Decision.OPEN) {
+            setTradingPlayer(player);
+            openTradingScreen(player, self.getDisplayName(), 0);
+        }
+        cir.setReturnValue(InteractionResult.CONSUME);
     }
 
     // canRestock() 与 openTradingScreen() 有 default 实现，不覆写。

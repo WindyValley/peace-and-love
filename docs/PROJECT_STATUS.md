@@ -12,36 +12,43 @@
 
 ---
 
-## 当前阶段（2026-10-12 更新）：交易系统 Sprint —— 定价域全绿，交易组装器完成，下一步右键开 GUI（heavy）
+## 当前阶段（2026-10-12 更新）：交易系统 Sprint —— 右键交易 GUI 真机全绿（T-TRADE-003 done），下一步补货 T-TRADE-004
 
-**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 27/44（61%）**。common 单测 **165 全绿（0 skip）**。
+**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 28/44（64%）**。common 单测 **173 全绿（0 skip）**。
 
-### 本轮完成（定价域 PRICE 全部 done + 交易组装器）
+### 本轮完成（T-TRADE-003 右键开交易 GUI，真机 8/8 全绿）
 
 | 任务 | 产出 | commit | 验证 |
 |------|------|--------|------|
-| T-PRICE-001 | 真实掉落物扫描器 `LootTableScanner`（替代手填，直接读原版战利品表，Bootstrap 引导） | 已 push | 单测 + 真机 70 条与黄金基线逐条等值 |
-| T-PRICE-002.1 | `PricingEngine`（对数曲线 + override + clamp 1..128）+ 规则文档 `PRICING_RULES.md` | 已 push | 单测（价格纯函数） |
-| T-PRICE-002.2 | `ConfigurablePriceCurve` 配置绑定层 + loader 锚点关系校验（cheap≥rare，否则启动失败） | `84467ec` | 14 单测 |
-| T-PRICE-003 | `PriceTable` 不可变构表/缓存 + `PriceTableService`（启动构表、`/pal trade reload` 重建） | 已 push | 9 单测 + **真机 PASS** |
-| T-PRICE-004 | `selfCheck` 单调性/撞限自检 + 启动 INFO / 逆序 WARN（不阻断启动） | `48b565a` | 5 单测 + **真机 PASS** |
-| T-TRADE-002.1 | `TradeSpec`（单条规格 → 原版 `MerchantOffer`，绿宝石双槽拆分） | 已 push | 单测 |
-| T-TRADE-002.2 | `TradeOfferBuilder.assemble(type,config,table)` 门控+遍历定价表组装，接入 `MobMerchantMixin.getOffers()` | `c195627` | 7 单测，**3/4 验收（第 4 条留 003 真机）** |
+| T-TRADE-003 | 右键门控纯决策 `trade/TradeInteraction`（三态 OPEN/EMPTY_OFFERS/FALL_THROUGH）；`AngerController.isAngry(Mob)` 三路仇恨判定；`MobMerchantMixin` 注入 `mobInteract`（服务端权威、客户端零干预）；getOffers 按 PriceTable 实例身份跟随 reload 懒重建 | 本轮 | 8 单测 + **真机 8/8 PASS** |
 
-**真机结论（测试服 192.0.2.10，NeoForge 1.21.1）**：
-- 构表 70 条报价（38 适配生物域内）与黄金基线 `final_pricing_128.json`（已按扫描域过滤）**逐条 item/epk/price/amount 等值**；override 正/负、白名单守卫、签名守卫（reload 不改锚点）均验过。
-- 默认自检：`共 70 条，撞下限 3、撞上限 0`（INFO），无逆序，不阻断启动；把僵尸村民腐肉 override 填成 120 立即 WARN 检出 3 对逆序并列定位串。
-- 测试服当前跑的就是最新源码构建（verify 开关、逐 zip 条目 CRC32 核对一致），配置已还原默认、保持开机；旧 jar 备份在远端 `mods_backup/`。
+**真机结论（runClient + 测试服 192.0.2.10，NeoForge 1.21.1，脚本 `tests/automation/verify_trade_interaction.py`）**：
+1. 空手右键中立僵尸 → `MerchantScreen` 打开、报价 4 条 ✅
+2. 僵尸在白名单 → 不开（保持原版）✅
+3. `trading_enabled=false` → 不开 ✅
+4. 监守者（自然召唤）+ `boss_trading_enabled=false` → 不开 ✅
+5. 监守者 + `boss_trading_enabled=true` → 打开、报价 1 条（幽匿催发体）✅
+6. 玩家攻击后仇恨中（anger=PLAYER_DIRECT）→ 不开 ✅
+7. 主手持物右键 → 不开（保留原版交互）✅
+8. 未适配生物牛 → 不开（保持原版）✅
 
-**本轮修掉的真 bug**：reload 回执骗人——`PalConfig.summarize()` 漏了锚点/override/仇恨/限购字段，改锚点仍显示「无变更」（`a2288e8`，真机复验回执正确）。
+**架构关键点（已真机确认，别再走回头路）**：
+- **客户端完全不干预**：客户端物理端拿不到服务端 config/仇恨/报价（Brain 记忆不同步），在客户端猜门控会误拦村民。开 GUI 完全由服务端 `openTradingScreen` 的 openMenu + `ClientboundMerchantOffersPacket` 驱动；客户端保持原版 PASS。
+  - **P2 状态（勿夸大）**：本轮 runClient 是从 peace-and-love 工程起的 dev 客户端，classpath **含 PAL 自身**，所以验的是「装了 mod 但客户端分支零干预」，**不是**纯原版客户端。P2 要真闭环，须用 mc-client-rpc 工程自己的 runClient（只加载 RPC 驱动 mod、不含 PAL 业务类）连服右键确认；协议全原版、理论成立，但这一步还没跑。
+- 门控六条件（canTrade/非仇恨/存活/未在交易/双手空手/有货）抽到纯函数 `TradeInteraction.evaluate` 单测；空报价吞交互不开窗（对齐村民「没货」CONSUME）。
+- `getTradingPlayer()!=null` 守卫防止客户端同一次右键的 interactAt+interact 两包重复 openMenu。
+- **自然监守者召唤配方**：`/summon warden` 5 秒钻地自灭（NoAI 也挡不住）；必须铺直道放 `sculk_shrieker[can_summon=true]`（NBT 写法会被静默忽略，要用 blockstate；判定用 `execute if block …[can_summon=true]`，`data get block` 看不到 blockstate），玩家**直线来回走**穿过尖啸体攒 STEP 振动，warning_level 1→4 约 38s 召出。画圈贴墙原地踏步无位移=无 STEP，召不出来。
+- **清手命令坑**：`item replace entity @p weapon.mainhand []` 回显成功但不清槽；必须 `… with air`。
+
+**mc-client-rpc 侧**：新增 `player.interact` RPC（走真实 `MultiPlayerGameMode.interact` 发 INTERACT 包，延迟读 `mc.screen` 是否 MerchantScreen + 报价数，验完自动关窗）。
 
 ### 交接给新会话（cold start 必读）
 
-- **下一个任务：T-TRADE-003 —— 右键中立怪物打开原版交易 GUI**。这是把整条链（扫描→定价→组装→界面）在游戏里点亮的关键，也是 **heavy 节点**：要给 `MobMerchantMixin` 注入 `mobInteract`（服务端 `MerchantMenu` + 网络同步），不是纯逻辑。
-- **验证方式变了**：测试服是**无客户端 dedicated server**，「右键→看到绿宝石价→成交」这类交互 RCON/RPC 验不了。须用 **runClient 真机客户端自动化**（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；PAL 业务脚本放本仓 `tests/automation/`，通用驱动留 mc-client-rpc）。内存里有连服/召唤/采样/读日志要写进一个 .py 跑一条命令的纪律。
-- **003 会一并收口的旧账**：① T-TRADE-002.2 **验收 4**（mixin 织入后游戏内真能取价/显示）；② T-TEST-001 交易链真机；③ T-NEUT-004 里标「待交易链接线」的右键项；④ reload 后已存在生物的报价刷新（目前 `pal$offers` 懒缓存一次，锚点 reload 后旧生物不刷新，003/补货时处理）。
-- **已测路径**：定价扫描/曲线/构表/组装/门控/自检全链路单测 + 服务端真机（日志/RPC 可读项）。**未测路径（必须真机客户端）**：右键打开 GUI、绿宝石报价在界面显示、双槽支付成交、maxUses 买光与补货、P2「客户端不装模组能否交易」。
-- **关键类**：`pricing/LootTableScanner`、`pricing/PricingEngine`+`ConfigurablePriceCurve`、`pricing/PriceTable`+`PriceTableService`、`trade/TradeSpec`、`trade/TradeOfferBuilder`、`mixin/MobMerchantMixin`（已有 Merchant 接口注入 + 空的 notifyTrade/overrideXp，右键注入待加）。
+- **下一个任务：T-TRADE-004（补货/限购）** 或 T-TRADE-005（成交支付链路，见任务卡）。右键开 GUI 已点亮，扫到的价格能在界面显示；但「放绿宝石→真的成交扣款取物」的完整成交闭环与 maxUses 买光/每日补货尚未真机验证。
+- **reload 报价刷新旧账④已在本轮收口**：getOffers 按 PriceTable 实例身份懒重建，锚点/override reload 后旧生物也拿新价；代价是 reload 后 uses（当日购买次数）归零，补货机制（004）落地前接受。
+- **验证方式**：runClient 真机客户端自动化（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；通用驱动留那边，PAL 业务脚本放本仓 `tests/automation/`）。一条 python 跑完连服/召唤/采样/读日志，别写 bash sleep 一行流。部署用 `tests/automation/deploy_server.py`（停服→备份→上传→CRC/sha 核对→启服）。
+- **未测路径（后续真机）**：双槽绿宝石支付成交、maxUses 买光后条目售罄、跨游戏日补货恢复、村民/其他 Merchant 原生实体右键零回归（当前客户端不干预理论零影响，值得真机扫一眼）。
+- **关键类**：`trade/TradeInteraction`（门控纯函数）、`trade/TradeOfferBuilder`、`mixin/MobMerchantMixin`（Merchant 注入 + mobInteract 右键注入）、`anger/AngerController#isAngry(Mob)`（三路仇恨）、`pricing/PriceTable`。
 - **构建开关坑**：`:common:test` 加 `--configure-on-demand` 可跳 fabric 配置；但 `:neoforge:build` 出 jar **不能**加它（报 accessWidenerPath is final），去掉即可。部署 jar 必须 `-PenableVerifyRpc=true`，否则 BuildFlags 常量折叠、产物无 RPC 且对不上。
 - **工程改进**：任务脚本 `task.py` 已补 `check/uncheck <序号>` 子命令（支持「已写未验」部分勾选，别再手改 checkbox）。
 - 发布（T-REL-005）🔒 须用户显式说「发」；仓库保持私有。
