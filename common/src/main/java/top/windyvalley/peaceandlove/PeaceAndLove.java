@@ -32,6 +32,9 @@ public final class PeaceAndLove {
     /** 中立化服务单例。 */
     private static NeutralizationService neutralizationService;
 
+    /** 定价表服务单例（T-PRICE-003）。 */
+    private static top.windyvalley.peaceandlove.pricing.PriceTableService priceTableService;
+
     /** JSON-RPC 验证服务（仅测试环境开启）。 */
     private static JsonRpcService jsonRpcService;
 
@@ -56,6 +59,10 @@ public final class PeaceAndLove {
 
         // 仇恨衰减接线（T-ANGER-004）：Goal 系每 tick 脱战判定
         new top.windyvalley.peaceandlove.anger.AngerDecayService().register();
+
+        // 定价表接线（T-PRICE-003）：SERVER_STARTED 数据包就绪后构表，定价配置 reload 时重建
+        priceTableService = new top.windyvalley.peaceandlove.pricing.PriceTableService(configManager);
+        priceTableService.register();
 
         // 服务端生命周期：启动时开启 JSON-RPC，关闭时停止。
         // 仅在显式开启调试端口的构建里生效（正式构建常量为 false，代码被编译消除）。
@@ -91,6 +98,11 @@ public final class PeaceAndLove {
     /** 中立化服务（供 AngerController 接线 anger 探针）。 */
     public static NeutralizationService neutralization() {
         return neutralizationService;
+    }
+
+    /** 定价表服务（T-PRICE-003，供交易系统与 debug 命令查询）。 */
+    public static top.windyvalley.peaceandlove.pricing.PriceTableService priceTable() {
+        return priceTableService;
     }
 
     /** JSON-RPC 验证服务。 */

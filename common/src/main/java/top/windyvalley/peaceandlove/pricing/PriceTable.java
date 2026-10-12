@@ -1,0 +1,156 @@
+package top.windyvalley.peaceandlove.pricing;
+
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import top.windyvalley.peaceandlove.config.PalConfig;
+import top.windyvalley.peaceandlove.pricing.LootTableScanner.DropEntry;
+import top.windyvalley.peaceandlove.trade.TradeSpec;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 不可变定价表 —— 启动/reload 时一次性构建，运行期只读，T-PRICE-003。
+ *
+ * <p>权威结构对齐设计 §5.1：{@code EntityType → List<TradeSpec>}。<b>同一生物的同一
+ * 物品可能有多条报价</b>，这是有意保留而非缺陷：原版战利品表里互斥分支可掉落同一物品
+ * 但掉落量不同（例如史莱姆的黏液球，青蛙击杀分支掉 2 个、普通分支掉 1 个，epk 与价格
+ * 都不同，见 spike 黄金基线 final_pricing_128.json 中 slime/slime_ball 的两条）。
+ * 扫描层注释已声明「合并不在本层做」，这里若按 {@code (生物,物品)} 压成单值会丢失掉落量
+ * 维度，故保留为多条，交给交易 GUI 呈现为多个报价。
+ *
+ * <p>查询均为 O(1)：{@link #offersFor(EntityType)} 走 {@code byEntity}，
+ * {@link #offersFor(EntityType, Item)} 走扁平索引 {@code byEntityItem}。
+ *
+ * <p>不可变性：构建期使用可变 Map 收集，发布前一律 {@code Map.copyOf/List.copyOf}；
+ * 发布后没有任何途径修改内部结构（无 setter、防御性拷贝），因此多线程读安全，
+ * 与 ConfigManager「整体替换 volatile 引用」的热重载模型配合无竞态。
+ */
+public final class PriceTable {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("Peace And Love/PriceTable");
+
+    /** MerchantOffer 双输入槽 64+64 的物理上限，override 也不得超过。 */
+    static final int HARD_PRICE_LIMIT = 128;
+
+    /** 启动尚未完成 / 构建失败时的空表，保证查询永不返回 null。 */
+    public static final PriceTable EMPTY = new PriceTable(Map.of(), Map.of());
+
+    private final Map<EntityType<?>, List<TradeSpec>> byEntity;
+    private final Map<EntityItemKey, List<TradeSpec>> byEntityItem;
+
+    private PriceTable(Map<EntityType<?>, List<TradeSpec>> byEntity,
+                       Map<EntityItemKey, List<TradeSpec>> byEntityItem) {
+        this.byEntity = byEntity;
+        this.byEntityItem = byEntityItem;
+    }
+
+    /** (生物, 物品) 复合键 —— 仅作扁平索引，值为该组合下的全部报价（可能多条）。 */
+    private record EntityItemKey(EntityType<?> type, Item item) {
+    }
+
+    /**
+     * 把扫描出的掉落期望按当前配置定价，构建不可变定价表（纯逻辑，可单测）。
+     *
+     * <p>每条 {@link DropEntry}：价格优先取 {@code price_overrides} 手工修正，
+     * 否则走 {@link ConfigurablePriceCurve}；产出量取 looting 0 上界 {@code countMax}。
+     *
+     * @param drops  扫描结果（T-PRICE-001）
+     * @param config 当前配置（锚点/上限/手工修正）
+     */
+    public static BuildResult build(List<DropEntry> drops, PalConfig config) {
+        long start = System.nanoTime();
+        List<String> warnings = new ArrayList<>();
+
+        Map<EntityType<?>, List<TradeSpec>> byEntity = new LinkedHashMap<>();
+        Map<EntityItemKey, List<TradeSpec>> byEntityItem = new LinkedHashMap<>();
+        // 本次构建实际命中的 override key，用于最后反查「配了但没对应掉落」的无效修正
+        java.util.Set<String> usedOverrides = new java.util.HashSet<>();
+
+        for (DropEntry d : drops) {
+            int price = resolvePrice(d, config, warnings, usedOverrides);
+            TradeSpec spec;
+            try {
+                spec = new TradeSpec(d.item(), d.countMax(), price, d.epk());
+            } catch (RuntimeException e) {
+                // 单条非法（理论上价格已 clamp、countMax>=1，不会到这）：跳过而非崩构建
+                warnings.add("跳过非法报价 " + d.entityId() + "/" + d.itemId() + ": " + e);
+                continue;
+            }
+            byEntity.computeIfAbsent(d.type(), k -> new ArrayList<>()).add(spec);
+            byEntityItem.computeIfAbsent(new EntityItemKey(d.type(), d.item()), k -> new ArrayList<>()).add(spec);
+        }
+
+        // 提示管理员：配了 override 却没有对应掉落（多半是 id 拼错或该生物不掉此物）
+        for (String key : config.price_overrides().keySet()) {
+            if (!usedOverrides.contains(key)) {
+                warnings.add("price_overrides[" + key + "] 未匹配到任何可定价掉落，已忽略（请检查 实体ID/物品ID）");
+            }
+        }
+
+        // 冻结
+        Map<EntityType<?>, List<TradeSpec>> frozenEntity = new LinkedHashMap<>();
+        byEntity.forEach((t, list) -> frozenEntity.put(t, List.copyOf(list)));
+        Map<EntityItemKey, List<TradeSpec>> frozenPair = new LinkedHashMap<>();
+        byEntityItem.forEach((k, list) -> frozenPair.put(k, List.copyOf(list)));
+
+        long elapsed = (System.nanoTime() - start) / 1_000_000;
+        int offerCount = frozenPair.values().stream().mapToInt(List::size).sum();
+        LOGGER.info("PAL 定价表构建完成：{} 生物、{} 条报价，耗时 {} ms，{} 条告警",
+                frozenEntity.size(), offerCount, elapsed, warnings.size());
+
+        PriceTable table = new PriceTable(Map.copyOf(frozenEntity), Map.copyOf(frozenPair));
+        return new BuildResult(table, List.copyOf(warnings), elapsed, offerCount);
+    }
+
+    /** 定价：override 优先（clamp 到 [1, price_max]），否则走配置曲线。 */
+    private static int resolvePrice(DropEntry d, PalConfig config,
+                                    List<String> warnings, Set<String> usedOverrides) {
+        String key = d.entityId().toString() + "/" + d.itemId().toString();
+        Integer override = config.price_overrides().get(key);
+        if (override != null) {
+            usedOverrides.add(key);
+            int max = Math.min(config.price_max(), HARD_PRICE_LIMIT);
+            if (override < 1 || override > max) {
+                int clamped = Math.max(1, Math.min(max, override));
+                warnings.add("price_overrides[" + key + "]=" + override
+                        + " 越界，clamp 为 " + clamped + "（合法区间 [1," + max + "]）");
+                return clamped;
+            }
+            return override;
+        }
+        return ConfigurablePriceCurve.price(d.epk(), config);
+    }
+
+    // ── 查询（全部 O(1)，返回不可变列表）──
+
+    /** 该生物的全部报价；无掉落/未适配返回空列表。 */
+    public List<TradeSpec> offersFor(EntityType<?> type) {
+        return byEntity.getOrDefault(type, List.of());
+    }
+
+    /** 该生物出售指定物品的全部报价（互斥分支可能多条）；无则空列表。 */
+    public List<TradeSpec> offersFor(EntityType<?> type, Item item) {
+        return byEntityItem.getOrDefault(new EntityItemKey(type, item), List.of());
+    }
+
+    /** 表内报价总条数。 */
+    public int size() {
+        return byEntityItem.values().stream().mapToInt(List::size).sum();
+    }
+
+    /** 表内有报价的生物类型集合（不可变）。 */
+    public Set<EntityType<?>> entities() {
+        return byEntity.keySet();
+    }
+
+    /** 构建结果：表 + 诊断。 */
+    public record BuildResult(PriceTable table, List<String> warnings,
+                              long elapsedMillis, int offerCount) {
+    }
+}
