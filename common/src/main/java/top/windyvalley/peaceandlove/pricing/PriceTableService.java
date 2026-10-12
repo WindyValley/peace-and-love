@@ -108,6 +108,29 @@ public final class PriceTableService {
                 PeaceAndLove.LOGGER.warn("  • {}", w);
             }
         }
+
+        // T-PRICE-004 单调性/撞限自检：只诊断不阻断，任何意外都不能影响启服
+        try {
+            logSelfCheck(result.table(), cfg);
+        } catch (RuntimeException e) {
+            PeaceAndLove.LOGGER.warn("定价表自检执行异常（不影响服务）：{}", e.toString());
+        }
+    }
+
+    /** 自检结果落日志：撞限 INFO；有逆序对则 WARN 并列前 5 个。 */
+    private static void logSelfCheck(PriceTable table, PalConfig cfg) {
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(table, cfg);
+        PeaceAndLove.LOGGER.info(
+                "PAL 定价自检：共 {} 条报价，撞下限(=1) {} 条、撞上限(={}) {} 条",
+                chk.totalOffers(), chk.lowerClamped(), cfg.price_max(), chk.upperClamped());
+        List<String> inv = chk.inversions();
+        if (!inv.isEmpty()) {
+            PeaceAndLove.LOGGER.warn(
+                    "PAL 定价自检发现 {} 对单调性逆序（同生物内 epk 更小却更便宜，"
+                            + "通常是 price_overrides 填反或锚点过激），前 {} 个：",
+                    inv.size(), Math.min(5, inv.size()));
+            inv.stream().limit(5).forEach(s -> PeaceAndLove.LOGGER.warn("  • {}", s));
+        }
     }
 
     /** 定价相关输入的签名（不含白名单/仇恨/交易开关等与价格无关的字段）。 */

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -149,5 +150,76 @@ class PriceTableTest {
         PriceTable.BuildResult r = PriceTable.build(List.of(flesh, bone), PalConfig.defaults());
         assertEquals(2, r.offerCount());
         assertTrue(r.elapsedMillis() >= 0);
+    }
+
+    // ── T-PRICE-004 单调性自检 ──
+
+    private static final String K_FLESH = "minecraft:zombie/minecraft:rotten_flesh";
+    private static final String K_IRON = "minecraft:zombie/minecraft:iron_ingot";
+
+    @Test
+    void 自检_默认曲线表健康无逆序() {
+        // 同生物两条：flesh 高产(epk 0.5)、iron 稀有(epk 0.0083)，曲线天然单调
+        DropEntry flesh = drop(EntityType.ZOMBIE, Items.ROTTEN_FLESH, 0.5, 2);
+        DropEntry iron = drop(EntityType.ZOMBIE, Items.IRON_INGOT, 0.0083, 1);
+        PriceTable t = PriceTable.build(List.of(flesh, iron), PalConfig.defaults()).table();
+
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(t, PalConfig.defaults());
+        assertEquals(2, chk.totalOffers());
+        assertTrue(chk.healthy(), "默认参数不应有逆序：" + chk.inversions());
+        // 方向正确：稀有铁锭价比高产腐肉高（撞限计数另有专门用例）
+        List<TradeSpec> z = t.offersFor(EntityType.ZOMBIE);
+        int fleshPrice = z.stream().filter(s -> s.item() == Items.ROTTEN_FLESH).findFirst().orElseThrow().price();
+        int ironPrice = z.stream().filter(s -> s.item() == Items.IRON_INGOT).findFirst().orElseThrow().price();
+        assertTrue(ironPrice > fleshPrice, "稀有铁锭应更贵：" + ironPrice + ">" + fleshPrice);
+    }
+
+    @Test
+    void 自检_override填反_检出逆序对() {
+        // flesh epk 大(0.5) 却 override 成 100；iron epk 小(0.01) 却 override 成 10
+        // → 更稀有的反而更便宜 = 逆序
+        PalConfig cfg = withOverrides(Map.of(K_FLESH, 100, K_IRON, 10));
+        DropEntry flesh = drop(EntityType.ZOMBIE, Items.ROTTEN_FLESH, 0.5, 2);
+        DropEntry iron = drop(EntityType.ZOMBIE, Items.IRON_INGOT, 0.01, 1);
+        PriceTable t = PriceTable.build(List.of(flesh, iron), cfg).table();
+
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(t, cfg);
+        assertEquals(1, chk.inversions().size(), "应检出恰好一对逆序：" + chk.inversions());
+        assertFalse(chk.healthy());
+        String desc = chk.inversions().get(0);
+        assertTrue(desc.contains("rotten_flesh") && desc.contains("iron_ingot"), desc);
+    }
+
+    @Test
+    void 自检_同价不同epk的平台期_不算逆序() {
+        // 两个 epk 不同但都被 override 成同一价（撞顶平台期），不构成逆序
+        PalConfig cfg = withOverrides(Map.of(K_FLESH, 64, K_IRON, 64));
+        DropEntry flesh = drop(EntityType.ZOMBIE, Items.ROTTEN_FLESH, 0.5, 2);
+        DropEntry iron = drop(EntityType.ZOMBIE, Items.IRON_INGOT, 0.01, 1);
+        PriceTable t = PriceTable.build(List.of(flesh, iron), cfg).table();
+
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(t, cfg);
+        assertTrue(chk.healthy(), "同价平台期不应判逆序：" + chk.inversions());
+    }
+
+    @Test
+    void 自检_撞上下限计数正确() {
+        PalConfig cfg = withOverrides(Map.of(K_FLESH, 1, K_IRON, 128));
+        DropEntry flesh = drop(EntityType.ZOMBIE, Items.ROTTEN_FLESH, 0.5, 2);
+        DropEntry iron = drop(EntityType.ZOMBIE, Items.IRON_INGOT, 0.01, 1);
+        PriceTable t = PriceTable.build(List.of(flesh, iron), cfg).table();
+
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(t, cfg);
+        assertEquals(1, chk.lowerClamped(), "flesh=1 撞下限");
+        assertEquals(1, chk.upperClamped(), "iron=128 撞上限");
+        // flesh epk 大价1、iron epk 小价128：方向正确（稀有更贵），无逆序
+        assertTrue(chk.healthy());
+    }
+
+    @Test
+    void 自检_空表不抛异常() {
+        PriceTable.SelfCheck chk = PriceTable.selfCheck(PriceTable.EMPTY, PalConfig.defaults());
+        assertEquals(0, chk.totalOffers());
+        assertTrue(chk.healthy());
     }
 }

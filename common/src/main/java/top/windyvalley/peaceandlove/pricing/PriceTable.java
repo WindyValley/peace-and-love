@@ -1,5 +1,6 @@
 package top.windyvalley.peaceandlove.pricing;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import org.slf4j.Logger;
@@ -147,6 +148,64 @@ public final class PriceTable {
     /** 表内有报价的生物类型集合（不可变）。 */
     public Set<EntityType<?>> entities() {
         return byEntity.keySet();
+    }
+
+    /**
+     * 定价单调性自检（T-PRICE-004）。
+     *
+     * <p>对数曲线本身保证单调：同一生物内 epk 越小（越稀有）价格应越高。逆序对只会在
+     * 手工 {@code price_overrides} 填反、或锚点被改得极端时出现。本方法<b>只检查、不修改、
+     * 不抛异常</b>，结果交给调用方打日志，绝不阻断启动。
+     *
+     * <p>逆序对定义（卡验收原文）：同一生物内，A 的 epk 比 B 小（更稀有），价格却比 B 低。
+     * 同价不同 epk（撞顶/撞底的平台期）不算逆序。
+     */
+    public static SelfCheck selfCheck(PriceTable table, PalConfig config) {
+        int max = config.price_max();
+        int total = 0, lowerClamped = 0, upperClamped = 0;
+        List<String> inversions = new ArrayList<>();
+
+        for (Map.Entry<EntityType<?>, List<TradeSpec>> e : table.byEntity.entrySet()) {
+            EntityType<?> type = e.getKey();
+            List<TradeSpec> offers = e.getValue();
+            for (TradeSpec s : offers) {
+                total++;
+                if (s.price() <= 1) {
+                    lowerClamped++;
+                }
+                if (s.price() >= max) {
+                    upperClamped++;
+                }
+            }
+            for (int i = 0; i < offers.size(); i++) {
+                for (int j = i + 1; j < offers.size(); j++) {
+                    TradeSpec a = offers.get(i);
+                    TradeSpec b = offers.get(j);
+                    // a 更稀有却更便宜，或反之（同价平台期不算）
+                    if ((a.epk() < b.epk() && a.price() < b.price())
+                            || (a.epk() > b.epk() && a.price() > b.price())) {
+                        inversions.add(describe(type, a) + "  ⇄  " + describe(type, b));
+                    }
+                }
+            }
+        }
+        return new SelfCheck(total, lowerClamped, upperClamped, List.copyOf(inversions));
+    }
+
+    /** 形如 "zombie/iron_ingot(epk=0.0083,price=117)" 的定位串，供日志列出前 5 个。 */
+    private static String describe(EntityType<?> type, TradeSpec s) {
+        String entity = BuiltInRegistries.ENTITY_TYPE.getKey(type).getPath();
+        String item = BuiltInRegistries.ITEM.getKey(s.item()).getPath();
+        return String.format("%s/%s(epk=%g,price=%d)", entity, item, s.epk(), s.price());
+    }
+
+    /** 自检结果：报价总数、撞下限(=1)/撞上限(=price_max)数、逆序对描述列表。 */
+    public record SelfCheck(int totalOffers, int lowerClamped, int upperClamped,
+                            List<String> inversions) {
+        /** 无逆序对即健康（撞限本身只是 INFO，不是错误）。 */
+        public boolean healthy() {
+            return inversions.isEmpty();
+        }
     }
 
     /** 构建结果：表 + 诊断。 */
