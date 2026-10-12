@@ -1,4 +1,4 @@
-- [-] T-PRICE-002: PriceCalculator 对数曲线
+- [x] T-PRICE-002: PriceCalculator 对数曲线
 
 **优先级：** P0
 **预估：** 3h
@@ -18,7 +18,7 @@
 ## 子任务（状态由子任务聚合，勿手改本卡状态）
 
 - [x] T-PRICE-002.1: 对数曲线纯逻辑：epk→绿宝石价（零依赖 L1）
-- [ ] T-PRICE-002.2: 定价锚点接配置：epk_cheap/epk_rare/price_max 从配置读取
+- [x] T-PRICE-002.2: 定价锚点接配置：epk_cheap/epk_rare/price_max 从配置读取
 
 ## 技术要点
 
