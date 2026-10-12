@@ -34,7 +34,7 @@
 
 **架构关键点（已真机确认，别再走回头路）**：
 - **客户端完全不干预**：客户端物理端拿不到服务端 config/仇恨/报价（Brain 记忆不同步），在客户端猜门控会误拦村民。开 GUI 完全由服务端 `openTradingScreen` 的 openMenu + `ClientboundMerchantOffersPacket` 驱动；客户端保持原版 PASS。
-  - **P2 状态（勿夸大）**：本轮 runClient 是从 peace-and-love 工程起的 dev 客户端，classpath **含 PAL 自身**，所以验的是「装了 mod 但客户端分支零干预」，**不是**纯原版客户端。P2 要真闭环，须用 mc-client-rpc 工程自己的 runClient（只加载 RPC 驱动 mod、不含 PAL 业务类）连服右键确认；协议全原版、理论成立，但这一步还没跑。
+  - **P2 已真机闭环（2026-10-12）**：用**独立 mc-client-rpc 工程**的 runClient（runtime classpath 只有测试驱动 mod + architectury，`run/mods` 空，零 PAL 类）连 PAL 服务端，同一套 8 例全 PASS。边界：客户端带 mc-client-rpc（仅开测试 JSON-RPC、不注册游戏内容/不碰交易），不是官方启动器零 mod，但命题「玩家不装 PAL 即可交易」成立。
 - 门控六条件（canTrade/非仇恨/存活/未在交易/双手空手/有货）抽到纯函数 `TradeInteraction.evaluate` 单测；空报价吞交互不开窗（对齐村民「没货」CONSUME）。
 - `getTradingPlayer()!=null` 守卫防止客户端同一次右键的 interactAt+interact 两包重复 openMenu。
 - **自然监守者召唤配方**：`/summon warden` 5 秒钻地自灭（NoAI 也挡不住）；必须铺直道放 `sculk_shrieker[can_summon=true]`（NBT 写法会被静默忽略，要用 blockstate；判定用 `execute if block …[can_summon=true]`，`data get block` 看不到 blockstate），玩家**直线来回走**穿过尖啸体攒 STEP 振动，warning_level 1→4 约 38s 召出。画圈贴墙原地踏步无位移=无 STEP，召不出来。
@@ -145,14 +145,14 @@ Brain 系 6 种全部**双向**通过：
 
 ---
 
-## P1~P4 验证（2026-09-11 完成 3/4）
+## P1~P4 验证（P1/P3/P4 2026-09-11；P2 2026-10-12 真机闭环，4/4 全完成）
 
 详见 `P1-P4-VERIFY.md`。验证工程 `spikes/p1-p3-probe/`（真实 Architectury 三模块，双端构建通过）。
 
 | # | 验证项 | 结论 |
 |---|--------|------|
 | **P1** | NeoForge 是否需 AT | ✅ **不需要** —— 真实服务端实测 `Merchant.isAssignableFrom(Mob.class)=true`，accesswidener 空 |
-| **P2** | 客户端不装模组能否交易 | ⚠️ **未实测** —— 理论成立（`openTradingScreen` 是 default 走原版协议），但需双端联机验证 |
+| **P2** | 客户端不装模组能否交易 | ✅ **能**（2026-10-12 真机）— 零 PAL 类的 mc-client-rpc 客户端连 PAL 服务端，右键开原版 GUI、报价同步，8/8 PASS；详见 `P1-P4-VERIFY.md` §P2 |
 | **P3** | 注入 Mob 基类 vs 38 类 | ✅ **维持基类** —— 82 concrete 子类，额外 44 个，每实例 ~24 B 懒加载，可忽略 |
 | **P4** | `NeutralMob` 冲突 | ✅ **无冲突**，但**原假设被推翻** —— 真实交集是末影人 + 僵尸猪灵（Goal 系），非猪灵等 4 个 Brain 系 |
 

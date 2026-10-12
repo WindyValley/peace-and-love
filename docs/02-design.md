@@ -368,7 +368,8 @@ public abstract class MobMerchantMixin implements Merchant {
      * 关键：服务端权威，客户端【完全不干预】。客户端物理端没有服务端配置 /
      * 仇恨 / 报价（Brain 记忆不与客户端同步），在客户端猜门控会对村民等未适配
      * 实体产生错误 SUCCESS 预测；开界面完全由服务端 openTradingScreen 的
-     * openMenu + ClientboundMerchantOffersPacket 驱动，天然支持客户端不装 mod。
+     * openMenu + ClientboundMerchantOffersPacket 驱动，天然支持客户端不装 mod
+     * （P2 已真机验证：零 PAL 类客户端照常交易，见 P1-P4-VERIFY §P2）。
      *
      * 门控真值表抽到纯函数 TradeInteraction.evaluate 单测覆盖，这里只抽取事实。
      */
@@ -577,7 +578,7 @@ public final class RestockManager {
 | 9 | 脱战 30 秒 | 恢复中立，可再次交易 |
 | 10 | 白名单热重载 | 移出掠夺者 → 立即中立化；加回 → 恢复原版行为 |
 | 11 | 装第三方怪物 Mod | 其生物**完全不受影响** |
-| 12 | 客户端不装模组 | 能否正常交易（P2） |
+| 12 | 客户端不装模组 | ✅ 能正常交易（P2 已真机验证 2026-10-12，见 P1-P4-VERIFY §P2） |
 
 ---
 

@@ -44,5 +44,5 @@
 
 ## 备注 / 遗留
 
-- **P2（纯原版客户端可交易）未真机闭环**：本轮 runClient 是 peace-and-love dev 客户端（classpath 含 PAL）。协议全原版理论成立，需用 mc-client-rpc 自己的 runClient（不含 PAL 类）连服复验。
+- **P2（纯原版客户端可交易）已真机闭环（2026-10-12）**：用独立 mc-client-rpc 工程的 runClient（零 PAL 类）连 PAL 服务端，同套 8 例全 PASS，见 `P1-P4-VERIFY.md` §P2。
 - 未测：双槽支付成交、maxUses 买光、跨日补货、村民等原生 Merchant 零回归（归 T-TRADE-004/005）。
