@@ -108,6 +108,26 @@ class ConfigManagerTest {
                 "摘要应包含变更的字段: " + r.message());
     }
 
+    @Test
+    void 重载定价锚点变更_摘要必须报告_不漏报成无变更() throws IOException {
+        // 真机发现：summarize 曾漏 epk_cheap/epk_rare/overrides，
+        // 改锚点后命令回执误报「无变更」，但定价表其实已重建。
+        ConfigManager m = manager();
+        Files.writeString(m.path(), "{\"epk_rare\": 0.01}");
+        ConfigManager.ReloadResult r = m.reload();
+        assertTrue(r.success());
+        assertTrue(r.message().contains("epk_rare"), "锚点变更必须出现在摘要: " + r.message());
+        assertFalse(r.message().contains("无变更"), "有变更不应回执无变更");
+    }
+
+    @Test
+    void 仅改非定价字段_摘要报告该字段() throws IOException {
+        ConfigManager m = manager();
+        Files.writeString(m.path(), "{\"anger_cooldown_seconds\": 99}");
+        ConfigManager.ReloadResult r = m.reload();
+        assertTrue(r.message().contains("anger_cooldown_seconds"), r.message());
+    }
+
     // ── 白名单变更 ──
 
     @Test

@@ -191,6 +191,34 @@ public final class ConfigManager {
         if (old.price_max() != fresh.price_max()) {
             changes.add("price_max: " + old.price_max() + " -> " + fresh.price_max());
         }
+        if (old.epk_cheap() != fresh.epk_cheap()) {
+            changes.add("epk_cheap: " + old.epk_cheap() + " -> " + fresh.epk_cheap());
+        }
+        if (old.epk_rare() != fresh.epk_rare()) {
+            changes.add("epk_rare: " + old.epk_rare() + " -> " + fresh.epk_rare());
+        }
+        if (!java.util.Objects.equals(old.price_overrides(), fresh.price_overrides())) {
+            changes.add("price_overrides 已更新");
+        }
+        if (old.kin_alert_radius() != fresh.kin_alert_radius()) {
+            changes.add("kin_alert_radius: " + old.kin_alert_radius() + " -> " + fresh.kin_alert_radius());
+        }
+        if (old.anger_cooldown_seconds() != fresh.anger_cooldown_seconds()) {
+            changes.add("anger_cooldown_seconds: " + old.anger_cooldown_seconds()
+                    + " -> " + fresh.anger_cooldown_seconds());
+        }
+        if (old.anger_cooldown_distance() != fresh.anger_cooldown_distance()) {
+            changes.add("anger_cooldown_distance: " + old.anger_cooldown_distance()
+                    + " -> " + fresh.anger_cooldown_distance());
+        }
+        if (old.max_uses_per_day() != fresh.max_uses_per_day()) {
+            changes.add("max_uses_per_day: " + old.max_uses_per_day()
+                    + " -> " + fresh.max_uses_per_day());
+        }
+        if (old.restock_interval_days() != fresh.restock_interval_days()) {
+            changes.add("restock_interval_days: " + old.restock_interval_days()
+                    + " -> " + fresh.restock_interval_days());
+        }
         return changes.isEmpty() ? "无变更" : String.join("；", changes);
     }
 
