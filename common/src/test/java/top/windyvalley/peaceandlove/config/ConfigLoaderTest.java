@@ -138,4 +138,24 @@ class ConfigLoaderTest {
         PalConfig read = l.load();
         assertEquals(original, read, "save 后 load 应还原同一配置");
     }
+
+    @Test
+    void 廉价锚点小于稀有锚点_关系非法_回退默认并回写() throws IOException {
+        Files.writeString(file(), "{\"epk_cheap\": 0.005, \"epk_rare\": 2.0}");
+        PalConfig c = loader().load();
+        PalConfig d = PalConfig.defaults();
+        assertEquals(d.epk_cheap(), c.epk_cheap(), "cheap 应回退默认");
+        assertEquals(d.epk_rare(), c.epk_rare(), "rare 应回退默认");
+        String json = Files.readString(file());
+        assertTrue(json.contains("\"epk_cheap\": 2.0"), "回写应修正为默认 cheap：" + json);
+        assertTrue(json.contains("\"epk_rare\": 0.005"), "回写应修正为默认 rare：" + json);
+    }
+
+    @Test
+    void 两锚点相等_关系非法_回退默认() throws IOException {
+        Files.writeString(file(), "{\"epk_cheap\": 0.5, \"epk_rare\": 0.5}");
+        PalConfig c = loader().load();
+        assertEquals(PalConfig.defaults().epk_cheap(), c.epk_cheap());
+        assertEquals(PalConfig.defaults().epk_rare(), c.epk_rare());
+    }
 }

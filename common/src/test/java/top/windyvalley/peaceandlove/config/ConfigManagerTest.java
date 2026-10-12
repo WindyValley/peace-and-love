@@ -11,8 +11,12 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import top.windyvalley.peaceandlove.pricing.ConfigurablePriceCurve;
+import top.windyvalley.peaceandlove.pricing.PricingEngine;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -170,5 +174,38 @@ class ConfigManagerTest {
         assertTrue(c.changed(), "未适配 id 仍允许添加");
         assertTrue(c.ineffective(), "但应标记为无效配置");
         assertTrue(c.message().contains("未适配"), "反馈应提示未适配");
+    }
+
+    // ── 定价曲线热重载（T-PRICE-002.2）──
+
+    @Test
+    void 改锚点重载后定价曲线立即用新参数() throws IOException {
+        ConfigManager m = manager();
+        double epk = 0.05;
+        int before = ConfigurablePriceCurve.price(epk, m.get());
+
+        // 把稀有锚点调紧到 0.05，重载后该 epk 恰好撞稀有端 → 最高价
+        Files.writeString(m.path(), "{\"epk_cheap\": 2.0, \"epk_rare\": 0.05}");
+        ConfigManager.ReloadResult r = m.reload();
+        assertTrue(r.success());
+
+        int after = ConfigurablePriceCurve.price(epk, m.get());
+        assertNotEquals(before, after, "热重载后曲线必须立即反映新锚点");
+        assertEquals(m.get().price_max(), after, "epk=稀有锚点应给最高价");
+        assertEquals(after,
+                PricingEngine.price(epk, 2.0, 0.05, m.get().price_max()),
+                "绑定层结果应等于用新参数直接调纯函数");
+    }
+
+    @Test
+    void 重载非法锚点关系时曲线仍可用旧语义默认值_不炸() throws IOException {
+        ConfigManager m = manager();
+        // cheap < rare：loader 交叉校验回退默认锚点（2.0/0.005），reload 仍成功
+        Files.writeString(m.path(), "{\"epk_cheap\": 0.005, \"epk_rare\": 2.0}");
+        ConfigManager.ReloadResult r = m.reload();
+        assertTrue(r.success(), "畸形锚点被容错回退，不应判重载失败");
+        // 回退后默认配置，廉价端给 1、稀有端给上限，曲线可正常出价
+        assertEquals(1, ConfigurablePriceCurve.price(2.0, m.get()));
+        assertEquals(m.get().price_max(), ConfigurablePriceCurve.price(0.005, m.get()));
     }
 }
