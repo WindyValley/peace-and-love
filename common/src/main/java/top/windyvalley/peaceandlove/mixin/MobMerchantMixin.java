@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.scope.NeutralizationScope;
+import top.windyvalley.peaceandlove.trade.TradeOfferBuilder;
 
 /**
  * 给 {@link Mob} 基类注入原版 {@link Merchant} 能力 —— ADR-002 方案 A。
@@ -69,7 +70,14 @@ public abstract class MobMerchantMixin implements Merchant {
             if (!NeutralizationScope.canTrade(self.getType(), PeaceAndLove.config().get())) {
                 return pal$EMPTY;
             }
-            this.pal$offers = new MerchantOffers();
+            // T-TRADE-002.2：从定价表组装整份报价（门控组装器内部再过一遍 canTrade）。
+            // 懒加载一次后缓存在 pal$offers —— MerchantOffer 的 uses 是这只怪物各自的
+            // 交易/补货状态，必须每只一份、长期持有。锚点 reload 后旧生物报价的刷新机制
+            // 随右键交易链（T-TRADE-003）/补货一起处理。
+            this.pal$offers = TradeOfferBuilder.assemble(
+                    self.getType(),
+                    PeaceAndLove.config().get(),
+                    PeaceAndLove.priceTable().table());
         }
         return this.pal$offers;
     }
