@@ -127,8 +127,8 @@ public final class ConfigLoader {
                 def.boss_trading_enabled());
         int max_uses_per_day = readInt(root, merged, "max_uses_per_day",
                 def.max_uses_per_day(), 1, 64);
-        int restock_interval_days = readInt(root, merged, "restock_interval_days",
-                def.restock_interval_days(), 1, 100);
+        double restock_interval_days = readDouble(root, merged, "restock_interval_days",
+                def.restock_interval_days(), 0.01, 100.0);
 
         int price_max = readInt(root, merged, "price_max",
                 def.price_max(), 1, PRICE_MAX_LIMIT);

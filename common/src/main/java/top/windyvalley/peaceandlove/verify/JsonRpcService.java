@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.anger.AngerController;
+import top.windyvalley.peaceandlove.trade.RestockManager;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -470,7 +471,33 @@ public final class JsonRpcService {
                 int n = -1;
                 if (merchant) {
                     try {
-                        n = ((net.minecraft.world.item.trading.Merchant) found).getOffers().size();
+                        net.minecraft.world.item.trading.Merchant m =
+                                (net.minecraft.world.item.trading.Merchant) found;
+                        net.minecraft.world.item.trading.MerchantOffers offers = m.getOffers();
+                        n = offers.size();
+                        // T-TRADE-004：stock="out" 置满全部报价（模拟买光，成交链路在 005）。
+                        String stockAction = params.has("stock") ? params.get("stock").getAsString() : "";
+                        if ("out".equals(stockAction)) {
+                            for (var o : offers) {
+                                o.setToOutOfStock();
+                            }
+                        }
+                        // 回读每条 uses/maxUses/out 与世界时钟，供补货/持久化真机判定。
+                        StringBuilder uses = new StringBuilder();
+                        int idx = 0;
+                        for (var o : offers) {
+                            if (idx > 0) {
+                                uses.append(",");
+                            }
+                            uses.append(o.getUses()).append("/").append(o.getMaxUses())
+                                    .append(o.isOutOfStock() ? "X" : "");
+                            idx++;
+                        }
+                        sb.append(";uses=").append(uses);
+                        sb.append(";gameTime=").append(found.level().getGameTime());
+                        sb.append(";dayTime=").append(found.level().getDayTime());
+                        sb.append(";day=").append(found.level().getDayTime()
+                                / RestockManager.DAY_TICKS);
                     } catch (Exception ex) {
                         sb.append(";offersError=").append(ex.getClass().getSimpleName());
                     }

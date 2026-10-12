@@ -354,12 +354,18 @@ public abstract class MobMerchantMixin implements Merchant {
         if (self.level().isClientSide) return pal$offers == null ? pal$EMPTY : pal$offers;
         if (!NeutralizationScope.canTrade(self.getType(), cfg)) return pal$EMPTY;  // 零分配
         PriceTable table = PeaceAndLove.priceTable().table();
-        // 定价表 reload 后实例身份变化 → 已存在生物也懒重建（uses 归零，补货落地前接受）
-        if (pal$offers == null || pal$offersTable != table) {
+        // 失效签名 = 定价内容指纹 + max_uses_per_day：改价/改限购才重建（uses 归零），
+        // reload 没改内容则保留购买次数（T-TRADE-004 真机验证）。
+        long sig = table.fingerprint() * 31 + cfg.max_uses_per_day();
+        if (pal$offers == null || pal$offersSig != sig) {
             pal$offers = TradeOfferBuilder.assemble(self.getType(), cfg, table);
-            pal$offersTable = table;
+            pal$offersSig = sig;
+            if (pal$lastRestockGame < 0) {
+                pal$lastRestockGame = self.level().getGameTime();
+                pal$lastRestockDay  = self.level().getDayTime() / 24000L;
+            }
         }
-        return pal$offers;   // RestockManager.tick（T-TRADE-004）每日补货，后续接入
+        return pal$offers;   // tick 里 RestockManager 按双时钟(滚动间隔 OR 跨自然日)清零 uses
     }
 
     /**
@@ -473,23 +479,47 @@ if (NeutralizationScope.isNeutralized(type) && !AngerController.isAngry(mob)) {
 
 > ⚠️ 性能：仅对 6 个 Brain 系生物执行，且有 `isNeutralized` 快速判定，开销可接受。dev 阶段需实测。
 
-### 5.3 每日补货
+### 5.3 每周期补货（T-TRADE-004，已真机验证）—— 对齐村民双时钟
+
+判定抽到纯算术 `RestockManager.evaluate`（不依赖 MC，可单测），**语义对齐原版村民
+`Villager#shouldRestock()` 的两个时钟**，但去掉其职业经验 / demand 涨价 / 每日次数上限：
+
+| 时钟 | 取值 | 作用 |
+|---|---|---|
+| 单调世界时钟 | `level.getGameTime()` | 滚动间隔腿：距上次实际补货达 `restock_interval_days`（支持小数，0.5=12000t）即允许补 |
+| 自然日时钟 | `level.getDayTime()/24000` | 跨自然日腿：天数比上次补货时变大即允许补。**玩家睡觉、`/time add` 都快进 getDayTime（同走 `ServerLevel#setDayTime`），故睡觉能让怪物提前补货**；它不碰 gameTime |
+
+两腿 OR，且都还要过 **`needsToRestock`**（至少一条报价 `isOutOfStock()`，对应村民同名判定）：
+没有买光的报价就不补、**锚点也不推进**（避免锚点因空转与真实购买脱节）。离线卸载期间不 tick，
+重挂后首 tick 一次性比较两个时钟，跨多少间隔/天都只补一次（与村民 flag OR 一致）。
 
 ```java
-public final class RestockManager {
-    public static void tick(Mob mob, MerchantOffers offers) {
-        long today = mob.level().getDayTime() / 24000L;
-        long last  = getLastRestockDay(mob);
-        int  period = ConfigManager.get().restockIntervalDays;   // 默认 1
-
-        if (last < 0 || today - last >= period) {
-            // ⚠️ 不能调用 Villager.restock() —— 它耦合 gossip/demand/价格波动
-            offers.forEach(MerchantOffer::resetUses);
-            setLastRestockDay(mob, today);
-        }
-    }
+// 返回 (是否补货, 新的上次 gameTime, 新的上次自然日)
+static RestockResult evaluate(long gameTime, long dayTime, long lastGame, long lastDay,
+                              double intervalDays, boolean hasStockedOut) {
+    long today = dayTime / 24000L;
+    if (lastGame < 0)            return new RestockResult(false, gameTime, today); // 首次只锚定
+    if (!hasStockedOut)          return new RestockResult(false, lastGame, lastDay);// 无售罄:不补,锚点不动
+    boolean byInterval = gameTime - lastGame >= max(1, round(intervalDays*24000));
+    boolean byDayChange = today > lastDay;                                        // 睡过一夜
+    if (byInterval || byDayChange) return new RestockResult(true, gameTime, today);// 锚点定当前,不网格回卷
+    return new RestockResult(false, lastGame, lastDay);
 }
+// Mixin tick：if (r.restocked()) RestockManager.resetUses(offers);
 ```
+
+> **为什么放弃旧的单时钟+网格对齐**：旧实现只看 gameTime 且锚点无条件按周期网格前移，
+> ①玩家睡觉不参与补货（与村民直觉不符，用户明确要求睡觉应影响补货时间）；②没人买时锚点也
+> 空转，"上次补货时刻"与真实购买脱节。现模型与村民同源、锚点即上次实际补货时刻。
+>
+> ⚠️ 绝不调 `Villager.restock()`（它先 `updateDemand()` 做 catchUpDemand 涨价 + 职业经验）；
+> 只 `MerchantOffer.resetUses()`。
+>
+> **持久化**（防卸载重挂刷货）：`pal_offers`(MerchantOffers.CODEC) + `pal_sig`(内容签名)
+> + `pal_restock_game`(上次 gameTime) + `pal_restock_day`(上次自然日) 随实体 NBT 存取，
+> 只写被右键过/从存档恢复的怪。读取兼容旧字段 `pal_restock`（=gameTime）。
+> 真机四组验证全绿：A 跨卸载购买次数保留 / B 在线小数周期补 / C 离线跨周期加载补算 /
+> **D 睡觉腿——interval=1 天，仅 `/time add 24000`（gameTime 实测只 +25 tick）day+1 即清零**。
 
 ---
 

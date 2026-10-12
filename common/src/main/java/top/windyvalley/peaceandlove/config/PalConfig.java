@@ -40,8 +40,8 @@ public record PalConfig(
         boolean boss_trading_enabled,
         /** MerchantOffer.maxUses，每日每样限购次数。 */
         int max_uses_per_day,
-        /** 补货间隔（游戏日），1=每天，3=三天一次。 */
-        int restock_interval_days,
+        /** 补货间隔（游戏日，支持小数），1=每天，0.5=半天（12000 tick），3=三天一次。 */
+        double restock_interval_days,
 
         // ── 定价 ──
         /** 价格上限，源于 MerchantOffer 双输入槽 64+64。 */

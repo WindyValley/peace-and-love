@@ -12,15 +12,32 @@
 
 ---
 
-## 当前阶段（2026-10-12 更新）：交易系统 Sprint —— 右键交易 GUI 真机全绿（T-TRADE-003 done），下一步补货 T-TRADE-004
+## 当前阶段（2026-10-13 更新）：交易系统 Sprint —— 右键 GUI + 补货/限购持久化真机全绿（T-TRADE-003/004 done，补货已对齐村民双时钟含睡觉腿），下一步成交链路 T-TRADE-005
 
-**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 28/44（64%）**。common 单测 **173 全绿（0 skip）**。
+**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 29/44（66%）**。common 单测 **184 全绿（0 skip）**。
 
-### 本轮完成（T-TRADE-003 右键开交易 GUI，真机 8/8 全绿）
+### 本轮完成（T-TRADE-004 补货/限购 + 购买次数持久化；按用户要求语义对齐村民双时钟，真机 A/B/C/D 全绿）
 
-| 任务 | 产出 | commit | 验证 |
-|------|------|--------|------|
-| T-TRADE-003 | 右键门控纯决策 `trade/TradeInteraction`（三态 OPEN/EMPTY_OFFERS/FALL_THROUGH）；`AngerController.isAngry(Mob)` 三路仇恨判定；`MobMerchantMixin` 注入 `mobInteract`（服务端权威、客户端零干预）；getOffers 按 PriceTable 实例身份跟随 reload 懒重建 | 本轮 | 8 单测 + **真机 8/8 PASS** |
+| 任务 | 产出 | 验证 |
+|------|------|------|
+| T-TRADE-004 | `RestockManager` 双时钟纯算术（单调 gameTime 滚动间隔 **OR** getDayTime 跨自然日/睡觉腿 + needsToRestock 门控）；config `restock_interval_days` int→double；Mixin tick 补货 + offers/uses NBT 双锚点持久化；PriceTable 内容指纹（改价/改限购才重建）；接通死配置 `max_uses_per_day` | 11 单测（173→184）+ **真机 A/B/C/D PASS** |
+
+**真机结论（runClient mc-client-rpc 干净客户端 + 98 服，脚本 `tests/automation/verify_restock.py`）**：
+- A 持久化：置满 uses→tp 远走使区块真卸载（怪从 loaded 实体消失）→回来 uses 仍 `1/1X`，NBT 往返保住购买次数（防卸载重挂刷货）。
+- B 在线小数周期：interval=0.005 天（120t≈6s），置满后原地等 8s（实测推进 161t）→uses 全 0。
+- C 离线补算：置满→卸载期间世界时钟继续走 234t 跨过周期→回来首 tick uses=0（验收第 5 条）。
+- **D 睡觉腿（本次新增语义）**：interval=1 天（24000t），置满后仅 `/time add 24000`（只走 setDayTime，源码 `TimeCommand.addTime` 证实与玩家睡觉同路径、不碰 gameTime），实测 **gameTime 只 +25t、自然日 1890→1891，uses 即全 0**——证明睡觉能让怪物提前补货。
+- 整数天/边界/无售罄不补/离线大跳由纯逻辑单测覆盖，不干等真机。
+
+**架构关键点（已真机确认）—— 对齐 `Villager#shouldRestock()`**：
+- **两个时钟 OR**：滚动间隔用单调 `level.getGameTime()`（每 tick+1，命令/睡觉改不了）；跨自然日用 `level.getDayTime()/24000`（玩家睡觉、`/time add` 都经 `ServerLevel#setDayTime` 快进此钟）。这是相对旧单时钟实现的关键修正——用户明确要求睡觉参与补货时间计算。
+- **needsToRestock 门控**：至少一条报价 `isOutOfStock()` 才补；没人买则不补且锚点不推进（旧实现锚点无条件网格前移、会与真实购买脱节）。
+- 补货后锚点定到**当前时刻**（对齐村民 OR flag，剩余零头并入下一周期），不再做网格回卷；离线跨再多间隔/天也只补一次。
+- 持久化四字段：`pal_offers`(MerchantOffers.CODEC) + `pal_sig`(内容签名) + `pal_restock_game`(上次 gameTime) + `pal_restock_day`(上次自然日)，只对被右键过/从存档恢复的怪写 NBT；读取兼容旧字段 `pal_restock`。
+- 报价失效签名 = `PriceTable.fingerprint()*31 + max_uses_per_day`：改价/改锚点/改掉落量/改限购才重建（uses 归零）；**reload 没改内容时保留购买次数**（修掉 003「reload 即丢 uses」的瑕疵）。
+- tick 只处理 `pal$offers != null` 的怪，绝不为全部野生怪每 tick 组装报价。
+- 顺手接通此前写死的 `max_uses_per_day`（TradeSpec.toOffer 原本 maxUses=1，config 从未生效）。
+- 绝不调用 `Villager.restock()`（耦合 gossip/demand），只 `MerchantOffer.resetUses()`。
 
 **真机结论（runClient + 测试服 192.0.2.10，NeoForge 1.21.1，脚本 `tests/automation/verify_trade_interaction.py`）**：
 1. 空手右键中立僵尸 → `MerchantScreen` 打开、报价 4 条 ✅
@@ -44,11 +61,12 @@
 
 ### 交接给新会话（cold start 必读）
 
-- **下一个任务：T-TRADE-004（补货/限购）** 或 T-TRADE-005（成交支付链路，见任务卡）。右键开 GUI 已点亮，扫到的价格能在界面显示；但「放绿宝石→真的成交扣款取物」的完整成交闭环与 maxUses 买光/每日补货尚未真机验证。
-- **reload 报价刷新旧账④已在本轮收口**：getOffers 按 PriceTable 实例身份懒重建，锚点/override reload 后旧生物也拿新价；代价是 reload 后 uses（当日购买次数）归零，补货机制（004）落地前接受。
-- **验证方式**：runClient 真机客户端自动化（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；通用驱动留那边，PAL 业务脚本放本仓 `tests/automation/`）。一条 python 跑完连服/召唤/采样/读日志，别写 bash sleep 一行流。部署用 `tests/automation/deploy_server.py`（停服→备份→上传→CRC/sha 核对→启服）。
-- **未测路径（后续真机）**：双槽绿宝石支付成交、maxUses 买光后条目售罄、跨游戏日补货恢复、村民/其他 Merchant 原生实体右键零回归（当前客户端不干预理论零影响，值得真机扫一眼）。
-- **关键类**：`trade/TradeInteraction`（门控纯函数）、`trade/TradeOfferBuilder`、`mixin/MobMerchantMixin`（Merchant 注入 + mobInteract 右键注入）、`anger/AngerController#isAngry(Mob)`（三路仇恨）、`pricing/PriceTable`。
+- **下一个任务：T-TRADE-005（成交支付链路）**。右键开 GUI（003）、限购次数/补货（004）都已就绪，但「玩家放绿宝石→点成交→扣款、发出掉落物、uses+1、买光后条目售罄」这条**真实成交闭环还没接线真机**——004 真机用探针 `setToOutOfStock()` 模拟了售罄态，没走真实购买。005 完成后需把「真买一次→uses+1→售罄→补货后恢复」端到端复验一遍。
+- **reload/购买次数旧账④已收口且更稳**：getOffers 用 PriceTable 内容指纹 + maxUses 作签名，改价/改限购才重建（uses 归零），**reload 没改内容时保留购买次数**；uses/补货时刻随实体 NBT 持久化，跨区块卸载/重启不丢（004 真机 A/C 验过）。
+- **验证方式**：runClient 真机客户端自动化（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；P2 用它自己的干净客户端，通用驱动留那边，PAL 业务脚本放本仓 `tests/automation/`）。一条 python 跑完连服/召唤/采样/读日志，别写 bash sleep 一行流。部署用 `tests/automation/deploy_server.py`。
+- **未测路径（后续真机）**：真实绿宝石支付成交（005）、双槽（>64 价）支付、买光后 GUI 即时售罄、跨游戏日补货后的 GUI 恢复、村民/流浪商人等原生 Merchant 右键零回归（当前 Mixin 对它们 getOffers 返回原样、mobInteract 客户端不干预，理论零影响，值得真机扫一眼）、Fabric 端 NBT/补货（代码在 common 但只 NeoForge 真机过）。
+- **关键类**：`trade/RestockManager`（补货纯算术）、`trade/TradeInteraction`（门控纯函数）、`trade/TradeOfferBuilder`/`TradeSpec#toOffer(maxUses)`、`mixin/MobMerchantMixin`（Merchant 注入 + mobInteract + tick 补货 + NBT save/load）、`anger/AngerController#isAngry(Mob)`、`pricing/PriceTable#fingerprint`。
+- **补货真机手法**：单调 gameTime 腿用 `restock_interval_days` 临时设 0.005（120t≈6s）验在线补货；**睡觉/跨自然日腿用 `/time add 24000`**（只快进 getDayTime、不碰 gameTime，源码证实与玩家睡觉同走 `ServerLevel#setDayTime`），probe 新增回显 `dayTime/day` 配合判定；用「tp 玩家 512 格远→probe 找不到怪」确认区块真卸载验持久化/离线补算；整数天/边界/无售罄靠单测，finally 还原配置。
 - **构建开关坑**：`:common:test` 加 `--configure-on-demand` 可跳 fabric 配置；但 `:neoforge:build` 出 jar **不能**加它（报 accessWidenerPath is final），去掉即可。部署 jar 必须 `-PenableVerifyRpc=true`，否则 BuildFlags 常量折叠、产物无 RPC 且对不上。
 - **工程改进**：任务脚本 `task.py` 已补 `check/uncheck <序号>` 子命令（支持「已写未验」部分勾选，别再手改 checkbox）。
 - 发布（T-REL-005）🔒 须用户显式说「发」；仓库保持私有。

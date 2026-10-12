@@ -215,7 +215,7 @@ public final class ConfigManager {
             changes.add("max_uses_per_day: " + old.max_uses_per_day()
                     + " -> " + fresh.max_uses_per_day());
         }
-        if (old.restock_interval_days() != fresh.restock_interval_days()) {
+        if (Double.compare(old.restock_interval_days(), fresh.restock_interval_days()) != 0) {
             changes.add("restock_interval_days: " + old.restock_interval_days()
                     + " -> " + fresh.restock_interval_days());
         }

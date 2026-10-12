@@ -48,8 +48,9 @@ public final class TradeOfferBuilder {
             return offers;
         }
         List<TradeSpec> specs = table.offersFor(type);
+        int maxUses = Math.max(1, config.max_uses_per_day());
         for (TradeSpec spec : specs) {
-            offers.add(spec.toOffer());
+            offers.add(spec.toOffer(maxUses));
         }
         return offers;
     }

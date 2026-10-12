@@ -60,6 +60,18 @@ class TradeSpecTest {
     }
 
     @Test
+    void 限购次数可配_透传到maxUses() {
+        MerchantOffer o = new TradeSpec(Items.BONE, 1, 8, 1.0).toOffer(4);
+        assertEquals(4, o.getMaxUses(), "max_uses_per_day 应透传");
+    }
+
+    @Test
+    void 限购次数非法_抛异常() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new TradeSpec(Items.BONE, 1, 8, 1.0).toOffer(0));
+    }
+
+    @Test
     void 非法入参_抛异常() {
         assertThrows(IllegalArgumentException.class,
                 () -> new TradeSpec(null, 1, 1, 1.0));

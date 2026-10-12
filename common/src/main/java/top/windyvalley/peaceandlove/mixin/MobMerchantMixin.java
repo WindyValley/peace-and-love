@@ -1,5 +1,7 @@
 package top.windyvalley.peaceandlove.mixin;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
@@ -14,12 +16,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.anger.AngerController;
 import top.windyvalley.peaceandlove.config.PalConfig;
 import top.windyvalley.peaceandlove.pricing.PriceTable;
 import top.windyvalley.peaceandlove.scope.NeutralizationScope;
+import top.windyvalley.peaceandlove.trade.RestockManager;
 import top.windyvalley.peaceandlove.trade.TradeInteraction;
 import top.windyvalley.peaceandlove.trade.TradeOfferBuilder;
 
@@ -53,11 +57,15 @@ public abstract class MobMerchantMixin implements Merchant {
     @Unique
     private MerchantOffers pal$offers;
 
-    /** 当前 pal$offers 基于的定价表实例；表随定价配置 reload 重建后身份变化，据此懒重建报价。 */
+    /** 当前 pal$offers 的内容签名 = PriceTable 指纹 + max_uses_per_day；任一变化则重建（改价或改限购）。 */
     @Unique
-    private PriceTable pal$offersTable;
+    private long pal$offersSig;
 
-    /** 上次补货所在的游戏日（day time / 24000）；补货逻辑在后续 T-TRADE 任务接入。 */
+    /** 上次补货的世界时刻（level.getGameTime，单调）；-1=尚未锚定。持久化以支持离线补算。 */
+    @Unique
+    private long pal$lastRestockGame = -1L;
+
+    /** 上次补货所在自然日（level.getDayTime()/24000）；睡觉快进 getDayTime 据此触发补货。 */
     @Unique
     private long pal$lastRestockDay;
 
@@ -84,14 +92,26 @@ public abstract class MobMerchantMixin implements Merchant {
             return pal$EMPTY;
         }
         PriceTable table = PeaceAndLove.priceTable().table();
-        // T-TRADE-003：定价表因锚点/override reload 重建（实例身份变化）后，
-        // 已存在生物也要拿到新报价 —— 懒重建。代价是 reload 后 uses（当日购买
-        // 次数）归零；补货机制（T-TRADE-004）落地前接受这一行为。
-        if (this.pal$offers == null || this.pal$offersTable != table) {
+        long sig = offerSignature(table.fingerprint(), cfg.max_uses_per_day());
+        // T-TRADE-003/004：
+        //  - 首次（无内存报价且无存档报价）：组装并锚定补货时刻；
+        //  - 签名一致（含从存档恢复、reload 未改价/限购）：复用，保留购买次数 uses；
+        //  - 签名变化（改价/改锚点/改掉落量/改限购后 reload）：重建，uses 归零（旧报价已失效）。
+        if (pal$offers == null || pal$offersSig != sig) {
             this.pal$offers = TradeOfferBuilder.assemble(self.getType(), cfg, table);
-            this.pal$offersTable = table;
+            this.pal$offersSig = sig;
+            if (this.pal$lastRestockGame < 0L) {
+                this.pal$lastRestockGame = self.level().getGameTime();
+                this.pal$lastRestockDay = self.level().getDayTime() / RestockManager.DAY_TICKS;
+            }
         }
         return this.pal$offers;
+    }
+
+    /** 报价内容签名：定价指纹与限购次数任一变化即失效。 */
+    @Unique
+    private static long offerSignature(long priceFingerprint, int maxUses) {
+        return priceFingerprint * 31L + maxUses;
     }
 
     @Override
@@ -180,6 +200,73 @@ public abstract class MobMerchantMixin implements Merchant {
             openTradingScreen(player, self.getDisplayName(), 0);
         }
         cir.setReturnValue(InteractionResult.CONSUME);
+    }
+
+    /**
+     * 每 tick 补货判定（T-TRADE-004，对齐村民双时钟模型）。
+     *
+     * <p>只对<b>已持有报价</b>的生物生效（被右键过，或从存档恢复了购买状态）。
+     * 判定是纯算术 {@link RestockManager#evaluate}：单调 gameTime 的滚动间隔 OR
+     * getDayTime 的跨自然日（睡觉快进这条腿），且要求至少一条报价售罄（needsToRestock），
+     * 没买光就不补、锚点不推进。区块卸载期间不 tick，重挂后首 tick 用两个时钟一次性补算。
+     */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void pal$onTick(CallbackInfo ci) {
+        Mob self = (Mob) (Object) this;
+        if (self.level().isClientSide || pal$offers == null || pal$offers.isEmpty()) {
+            return;
+        }
+        RestockManager.RestockResult r = RestockManager.evaluate(
+                self.level().getGameTime(),
+                self.level().getDayTime(),
+                pal$lastRestockGame,
+                pal$lastRestockDay,
+                PeaceAndLove.config().get().restock_interval_days(),
+                RestockManager.anyOutOfStock(pal$offers));
+        if (r.restocked()) {
+            RestockManager.resetUses(pal$offers);
+        }
+        pal$lastRestockGame = r.newLastGame();
+        pal$lastRestockDay = r.newLastDay();
+    }
+
+    /**
+     * 持久化购买次数与补货节奏（T-TRADE-004）。
+     *
+     * <p>只写已组装报价的怪（{@code pal$offers != null}），不给未交易过的野生怪塞 NBT。
+     * 存报价是为了让 maxUses/uses 跨区块卸载/重启保留——否则玩家走远再回来就能无视限购。
+     * 同时存内容签名，读回后若配置已改价/改限购，{@link #getOffers()} 会按新签名重建。
+     */
+    @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
+    private void pal$save(CompoundTag tag, CallbackInfo ci) {
+        if (pal$offers == null) {
+            return;
+        }
+        tag.putLong("pal_sig", pal$offersSig);
+        tag.putLong("pal_restock_game", pal$lastRestockGame);
+        tag.putLong("pal_restock_day", pal$lastRestockDay);
+        tag.put("pal_offers", MerchantOffers.CODEC.encodeStart(
+                ((Mob) (Object) this).registryAccess().createSerializationContext(NbtOps.INSTANCE),
+                pal$offers).getOrThrow());
+    }
+
+    /** 读回购买状态；签名校验交给 {@link #getOffers()}（配置变更则重建，uses 归零）。 */
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    private void pal$load(CompoundTag tag, CallbackInfo ci) {
+        if (!tag.contains("pal_offers")) {
+            return;
+        }
+        MerchantOffers.CODEC.parse(
+                ((Mob) (Object) this).registryAccess().createSerializationContext(NbtOps.INSTANCE),
+                tag.get("pal_offers")
+        ).result().ifPresent(loaded -> {
+            this.pal$offers = loaded;
+            this.pal$offersSig = tag.getLong("pal_sig");
+            this.pal$lastRestockGame = tag.contains("pal_restock_game")
+                    ? tag.getLong("pal_restock_game") : -1L;
+            this.pal$lastRestockDay = tag.contains("pal_restock_day")
+                    ? tag.getLong("pal_restock_day") : 0L;
+        });
     }
 
     // canRestock() 与 openTradingScreen() 有 default 实现，不覆写。

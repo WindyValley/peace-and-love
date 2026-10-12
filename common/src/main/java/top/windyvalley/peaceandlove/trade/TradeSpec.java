@@ -45,13 +45,19 @@ public record TradeSpec(Item item, int count, int price, double epk) {
      *
      * <p>固定语义（ADR-003）：
      * <ul>
-     *   <li>{@code maxUses=1}：每补货周期每样只能买一次；</li>
+     *   <li>{@code maxUses}：每个补货周期内该报价可购买次数（config
+     *       {@code max_uses_per_day}，默认 1）；</li>
      *   <li>经验 {@code xp=0}：怪物交易不给村民经验、不显示等级条；</li>
      *   <li>{@code priceMultiplier=0}：禁用原版需求量导致的价格漂移，保证定价确定；</li>
      *   <li>价格 &gt; 64 拆成两个绿宝石输入槽。</li>
      * </ul>
+     *
+     * @param maxUses 每补货周期限购次数，调用方来自 config，至少 1
      */
-    public MerchantOffer toOffer() {
+    public MerchantOffer toOffer(int maxUses) {
+        if (maxUses < 1) {
+            throw new IllegalArgumentException("maxUses 必须 >= 1，实际: " + maxUses);
+        }
         ItemCost costA = new ItemCost(Items.EMERALD, Math.min(price, PER_SLOT));
         Optional<ItemCost> costB = price > PER_SLOT
                 ? Optional.of(new ItemCost(Items.EMERALD, price - PER_SLOT))
@@ -60,9 +66,14 @@ public record TradeSpec(Item item, int count, int price, double epk) {
                 costA,
                 costB,
                 new ItemStack(item, count),
-                /* maxUses         */ 1,
+                /* maxUses         */ maxUses,
                 /* xp              */ 0,
                 /* priceMultiplier */ 0.0F
         );
+    }
+
+    /** 默认限购 1 次的便捷重载（与 config 默认值一致）。 */
+    public MerchantOffer toOffer() {
+        return toOffer(1);
     }
 }

@@ -44,11 +44,14 @@ public final class PriceTable {
 
     private final Map<EntityType<?>, List<TradeSpec>> byEntity;
     private final Map<EntityItemKey, List<TradeSpec>> byEntityItem;
+    /** 表内容指纹：生物→(物品,数量,价格) 规范化后的稳定哈希。改价/reload 后变化，供持久化报价失效判定。 */
+    private final long fingerprint;
 
     private PriceTable(Map<EntityType<?>, List<TradeSpec>> byEntity,
                        Map<EntityItemKey, List<TradeSpec>> byEntityItem) {
         this.byEntity = byEntity;
         this.byEntityItem = byEntityItem;
+        this.fingerprint = computeFingerprint(byEntity);
     }
 
     /** (生物, 物品) 复合键 —— 仅作扁平索引，值为该组合下的全部报价（可能多条）。 */
@@ -129,6 +132,33 @@ public final class PriceTable {
     }
 
     // ── 查询（全部 O(1)，返回不可变列表）──
+
+    /**
+     * 表内容指纹。同一掉落表 + 同一配置两次构建结果相同；改价 / 改锚点 / 改掉落量后变化。
+     *
+     * <p>用于让随实体存档的报价（购买次数 uses）在定价变更后失效重建，而不是沿用旧报价。
+     * 只纳入影响交易的字段（生物、物品、数量、价格），不含 epk（epk 变但价格没变时不必丢购买次数）。
+     */
+    public long fingerprint() {
+        return fingerprint;
+    }
+
+    /** 规范化（EntityType 注册名排序）后的稳定哈希；只纳入影响交易的字段。 */
+    private static long computeFingerprint(Map<EntityType<?>, List<TradeSpec>> byEntity) {
+        List<Map.Entry<EntityType<?>, List<TradeSpec>>> entries = new java.util.ArrayList<>(byEntity.entrySet());
+        entries.sort(java.util.Comparator.comparing(
+                e -> BuiltInRegistries.ENTITY_TYPE.getKey(e.getKey()).toString()));
+        long h = 1_469_598_539_037_040_107L; // 素数基数
+        for (Map.Entry<EntityType<?>, List<TradeSpec>> e : entries) {
+            h = h * 31 + BuiltInRegistries.ENTITY_TYPE.getKey(e.getKey()).toString().hashCode();
+            for (TradeSpec s : e.getValue()) {
+                h = h * 31 + BuiltInRegistries.ITEM.getKey(s.item()).toString().hashCode();
+                h = h * 31 + s.count();
+                h = h * 31 + s.price();
+            }
+        }
+        return h;
+    }
 
     /** 该生物的全部报价；无掉落/未适配返回空列表。 */
     public List<TradeSpec> offersFor(EntityType<?> type) {
