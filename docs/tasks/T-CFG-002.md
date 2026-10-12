@@ -1,5 +1,6 @@
-- [ ] T-CFG-002: 配置 JSON 读写与容错
+- [x] T-CFG-002: 配置 JSON 读写与容错
 
+**完成备注：** commit a38caed；ConfigLoaderTest 12 例：缺失补齐回写/语法错误回退默认+WARN/越界clamp/未知字段保留/损坏备份
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
@@ -17,11 +18,11 @@
 
 ## 验收标准
 
-- [ ] 首次启动自动生成 `config/peaceandlove.json`
-- [ ] 字段缺失时用默认值补齐并回写
-- [ ] JSON 语法错误时**不崩服**，回退全默认 + WARN 日志
-- [ ] 数值越界时 clamp 并 WARN（如 price_max < 1）
-- [ ] 未知字段保留不丢弃（向前兼容）
+- [x] 首次启动自动生成 `config/peaceandlove.json`
+- [x] 字段缺失时用默认值补齐并回写
+- [x] JSON 语法错误时**不崩服**，回退全默认 + WARN 日志
+- [x] 数值越界时 clamp 并 WARN（如 price_max < 1）
+- [x] 未知字段保留不丢弃（向前兼容）
 
 ## 技术要点
 

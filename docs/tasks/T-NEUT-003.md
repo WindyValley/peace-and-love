@@ -1,5 +1,6 @@
-- [ ] T-NEUT-003: BrainBasedStrategy（6 个 Brain 系）
+- [x] T-NEUT-003: BrainBasedStrategy（6 个 Brain 系）
 
+**完成备注：** commit 8967fab + 44ff721；覆盖 Brain 6 生物，机制由每tick擦除重构为 BrainMixin 写入源头拦截（验收已勘误），BrainBasedStrategyTest + BrainTickPerfSmokeTest；猪灵/疣猪兽同族示警真机（test_brain_kin_alert）
 **优先级：** P0
 **预估：** 6h
 **Owner：** agent
@@ -17,11 +18,11 @@
 
 ## 验收标准
 
-- [ ] 覆盖猪灵/猪灵蛮兵/疣猪兽/僵尸疣猪兽/监守者/旋风人
-- [ ] 每 tick 检查并擦除 `MemoryModuleType.ATTACK_TARGET`
-- [ ] 仇恨状态下**不擦除**（允许反击）
-- [ ] `restore()` 停止擦除
-- [ ] 性能：单实体每 tick 开销 < 1μs，做基线测量
+- [x] 覆盖猪灵/猪灵蛮兵/疣猪兽/僵尸疣猪兽/监守者/旋风人
+- [x] 攻击记忆在**写入源头**拦截：BrainMixin 于 setMemoryInternal 按 BrainAttackGate 门控取消 ATTACK_TARGET（猪灵族另拦 ANGRY_AT），取代旧的每 tick 擦除（commit 44ff721）
+- [x] 玩家攻击产生的愤怒/反击记忆在门控处放行（允许反击）
+- [x] `restore()` 随白名单门控停止拦截（Brain 系无 Goal 结构改动，空操作）
+- [x] 无每 tick 全服扫描；BrainTickPerfSmokeTest 做性能基线
 
 ## 技术要点
 

@@ -1,5 +1,6 @@
-- [ ] T-SCOPE-001: AdaptedMobs 38 个常量
+- [x] T-SCOPE-001: AdaptedMobs 38 个常量
 
+**完成备注：** commit bd3a95b；AdaptedMobsTest 断言合计38（GOAL_BASED 32 + BRAIN_BASED 6，第六为旋风人 BREEZE），集合不可变、O(1)，末影龙不在
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -17,12 +18,12 @@
 
 ## 验收标准
 
-- [ ] `AdaptedMobs.GOAL_BASED` 含 32 个 EntityType
-- [ ] `AdaptedMobs.BRAIN_BASED` 含 6 个：猪灵/猪灵蛮兵/疣猪兽/僵尸疣猪兽/监守者/旋风人
-- [ ] 合计 38，且 `isAdapted(EntityType)` 查询为 O(1)
-- [ ] **末影龙不在列表中**
-- [ ] 集合为不可变（`Set.copyOf` 或 `ImmutableSet`）
-- [ ] 单测断言总数 == 38
+- [x] `AdaptedMobs.GOAL_BASED` 含 32 个 EntityType
+- [x] `AdaptedMobs.BRAIN_BASED` 含 6 个：猪灵/猪灵蛮兵/疣猪兽/僵尸疣猪兽/监守者/旋风人
+- [x] 合计 38，且 `isAdapted(EntityType)` 查询为 O(1)
+- [x] **末影龙不在列表中**
+- [x] 集合为不可变（`Set.copyOf` 或 `ImmutableSet`）
+- [x] 单测断言总数 == 38
 
 ## 技术要点
 
