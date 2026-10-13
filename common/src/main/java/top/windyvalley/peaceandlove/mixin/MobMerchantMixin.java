@@ -8,6 +8,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffer;
@@ -122,6 +123,19 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override
     public void notifyTrade(MerchantOffer offer) {
         offer.increaseUses();
+        // 成交后把更新后的报价（含售罄红叉）重发给正在交易的客户端——对齐村民
+        // Villager#resendOffersToTradingPlayer（原版只在成交路径重发，开窗仅发一次）。
+        // 否则服务端 uses+1 已限购，但当前打开的 GUI 仍显示可买，直到重开窗口。
+        Mob self = (Mob) (Object) this;
+        if (self.level().isClientSide) {
+            return;
+        }
+        Player player = getTradingPlayer();
+        if (player instanceof ServerPlayer sp && pal$offers != null && !pal$offers.isEmpty()
+                && sp.containerMenu instanceof net.minecraft.world.inventory.MerchantMenu) {
+            sp.sendMerchantOffers(sp.containerMenu.containerId, pal$offers,
+                    0, getVillagerXp(), showProgressBar(), canRestock());
+        }
     }
 
     @Override

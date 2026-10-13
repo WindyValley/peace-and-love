@@ -339,7 +339,10 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override public void setTradingPlayer(Player p)      { pal$tradingPlayer = p; }
     @Override public Player getTradingPlayer()            { return pal$tradingPlayer; }
     @Override public void overrideOffers(MerchantOffers o){ pal$offers = o; }
-    @Override public void notifyTrade(MerchantOffer offer){ offer.increaseUses(); }
+    @Override public void notifyTrade(MerchantOffer offer){
+        offer.increaseUses();
+        pal$resendOffersToTrader();   // 见 §5.4：成交后重发报价，客户端即时显示售罄红叉
+    }
     @Override public void notifyTradeUpdated(ItemStack s) { /* 音效等 */ }
     @Override public int  getVillagerXp()                 { return 0; }
     @Override public void overrideXp(int xp)              { }
@@ -520,6 +523,60 @@ static RestockResult evaluate(long gameTime, long dayTime, long lastGame, long l
 > 只写被右键过/从存档恢复的怪。读取兼容旧字段 `pal_restock`（=gameTime）。
 > 真机四组验证全绿：A 跨卸载购买次数保留 / B 在线小数周期补 / C 离线跨周期加载补算 /
 > **D 睡觉腿——interval=1 天，仅 `/time add 24000`（gameTime 实测只 +25 tick）day+1 即清零**。
+
+### 5.4 真实成交链路（T-TRADE-005，已真机验证）
+
+注入 Merchant 后成交**完全复用原版、零 Villager 强转**，无需自写扣款/出货：
+
+```
+客户端点报价按钮            服务端
+MerchantScreen.postButtonClick
+  menu.setSelectionHint(i)
+  menu.tryMoveItems(i) ── 本地把绿宝石挪入货币槽(预测，尽量填满一组64)
+  send(SelectTradePacket) ──→ handleSelectTrade → menu.tryMoveItems(i)（权威再挪一次）
+客户端取结果(Shift点slot2)
+  gameMode.handleInventoryMouseClick(QUICK_MOVE,2)
+        ──→ MerchantResultSlot.onTake
+              offer.take(costA,costB)          // 按 getCostA/B 真实价 shrink 货币
+              merchant.notifyTrade(offer)      // ★ 我们注入：increaseUses + 重发报价
+              awardStat(TRADED_WITH_VILLAGER)
+              merchant.overrideXp(...)          // 我们空实现，xp 恒 0
+```
+
+**关键点 1 — 成交价读报价、不读货币槽**：`MerchantMenu.moveFromInventoryToPaymentSlot`
+会把货币槽尽量填满一整组（64），与需求量无关；`MerchantOffer.take` 只按
+`getCostA()/getCostB()`（本 mod multiplier=0，即配置价）shrink，多放的留槽内、关窗退回。
+真机：腐肉真实价 16，槽里被填 64，实际只扣 16。
+
+**关键点 2 — 成交后必须重发报价（PAL 唯一生产修复）**：原版只有村民
+`Villager#resendOffersToTradingPlayer()` 在成交路径把更新后的报价重发给客户端；
+开窗只发一次。我们的 `notifyTrade` 对齐之：
+
+```java
+@Override public void notifyTrade(MerchantOffer offer) {
+    offer.increaseUses();
+    Player tp = getTradingPlayer();
+    if (tp instanceof ServerPlayer sp && pal$offers != null && !pal$offers.isEmpty()
+            && sp.containerMenu instanceof MerchantMenu) {
+        sp.sendMerchantOffers(sp.containerMenu.containerId, pal$offers,
+                0, getVillagerXp(), showProgressBar(), canRestock());
+    }
+}
+```
+
+客户端 `handleMerchantOffers → menu.setOffers(...)`，于是买光（uses==maxUses）后**当前 GUI
+立即显示红叉**，不必重开。不重发则服务端已限购、界面却仍显示可买。
+
+**关键点 3 — 关窗必须发包**：真玩家按 Esc 走 `AbstractContainerScreen.onClose →
+LocalPlayer.closeContainer()`（发 ServerboundContainerClosePacket + 本地关屏），服务端
+`MerchantMenu.removed` 才 `setTradingPlayer(null)` 并把货币槽剩余退回背包。自动化驱动
+（mc-client-rpc）若只 `mc.setScreen(null)` 则不发包，服务端交易状态不释放、之后右键重开被
+「已在交易」门控挡下——该 bug 在驱动仓修复（trade.close / interact autoClose 均改走
+player.closeContainer）。
+
+> 真机两轮全绿：单次成交 A1~A5（开窗/给币/选报价出货/实扣 16/腐肉入包×2/uses+1/
+> 即时售罄/买光后限购）；买光→`/time add 24000` 睡觉补货→重开 uses 归零→再买腐肉 2→4
+> →新周期再次售罄。
 
 ---
 
