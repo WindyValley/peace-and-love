@@ -425,6 +425,24 @@ Architectury（common / fabric / neoforge）
 
 ## Handoff
 
+### 2026-10-13 交易 Sprint 收口 → 合入 main
+
+- **From：** trade-system（Hermes，分支 `feat/trade-system`）
+- **To：** 下一段开发（特殊适配 NEUT-005/006/007）/ 发布（REL-*）
+- **What：** 交易系统主体在 feature 分支完成并双端真机闭环，现合入 `main`
+  - 定价域全 done（扫描/对数曲线/PriceTable/单调自检），common 203 单测全绿
+  - T-TRADE-003/004/005：空手右键开窗、双时钟补货+购买次数 NBT 持久化、真实成交扣款出货、买光即时售罄、补货后再购
+  - 健壮性兜底：原生村民/流浪商人零回归且存档无 pal_offers 污染、双槽(64+36)支付、非僵尸怪种成交（Goal/Brain 两类 AI）
+  - P2 命题双端真机成立：零 PAL 类客户端可交易（NeoForge + Fabric），详见 P1-P4-VERIFY.md
+  - 修复：成交后重发报价；自动关窗改为发 close 包（在 mc-client-rpc）；定价取整改 Math.rint(HALF_EVEN) 对齐黄金基准
+- **Status：** done（叶子 36/44 = 82%，全卡 40/48 = 83%，TEST 域清零）
+- **Notes / 接手必读：**
+  - 真机手法、三个睡觉时序坑、构建开关坑均见上文「交接给新会话」段与 mc-client-automation-test skill
+  - 38 适配怪只抽验 5 种成交（机制同源）；发版前若求稳可整表扫（T-REL-001 真机清单）
+  - **版本号仍是 0.0.2**（0.0.2 alpha 已发）。本次只合并不发版；下次打 tag 前必须在 `gradle.properties` 升 `mod_version`（SemVer，0.x，不得用 1.0.0），release-ci 从 v* tag 取版本
+  - 发布动作 T-REL-005 🔒 须用户显式说「发」；仓库保持私有
+  - 下一功能块：NEUT-005（袭击系+潜影贝+幻翼）、NEUT-006（凋灵+监守者）、NEUT-007（末影人凝视+僵尸猪灵群体报复），代码确认零实现
+
 ```
 From: spike (Hermes)
 To:   design (unassigned)
