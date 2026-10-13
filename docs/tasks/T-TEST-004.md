@@ -1,5 +1,6 @@
-- [-] T-TEST-004: P2 验证：原版客户端交易
+- [x] T-TEST-004: P2 验证：原版客户端交易
 
+**完成备注：** 2026-10-13：第6条 Fabric 侧凭 1aef221 真机回填——fabric 版 mc-client-rpc 的 :fabric:runClient（零 PAL 类）连 Fabric 服，verify_fabric_trade_all 的单次成交首步即空手右键开窗+成交，与 NeoForge 同一边界；结论在 P1-P4-VERIFY.md。勘误：非官方启动器纯原版客户端
 **优先级：** P0
 **预估：** 3h
 **Owner：** 人工 + agent
@@ -21,7 +22,7 @@
 - [x] 右键僵尸能打开交易界面
 - [x] 交易能正常完成，物品正确到手
 - [x] 界面显示的价格与服务端一致
-- [ ] Fabric 侧同样验证一遍
+- [x] Fabric 侧同样验证一遍
 - [x] 结论写入 `../P1-P4-VERIFY.md`（含定位结论「玩家客户端无需安装 PAL 即可交易」）；对外宣传文案落地归 T-REL-002/004（仓库仍私有，发版时再写）
 
 ## 技术要点

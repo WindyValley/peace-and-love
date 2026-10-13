@@ -123,4 +123,18 @@ class RestockManagerTest {
         assertTrue(RestockManager.evaluate(
                 T0 + 24_000L, DAY0 * 24_000L, T0, DAY0, 1.0, true).restocked());
     }
+
+    @Test
+    void 存档回滚_锚点落在未来_容错不崩也不误补() {
+        // 存档回滚/时钟倒退：当前 gameTime、dayTime 都早于持久化的上次补货锚点。
+        // today(=999) > lastDay(=1002) 为 false、gameTime-lastGame 为负 → 两条腿都不触发，
+        // 且不得抛异常；锚点保持持久化值（等时钟自然追上再恢复正常判定）。
+        long futureGame = T0 + 1_000_000L;
+        long futureDay = 1_002L;
+        RestockManager.RestockResult r = RestockManager.evaluate(
+                T0 + 1_000L, 999L * 24_000L, futureGame, futureDay, 1.0, true);
+        assertFalse(r.restocked(), "锚点在未来时不得因 long 相减/比较而误补货");
+        assertEquals(futureGame, r.newLastGame(), "锚点不应被回拨");
+        assertEquals(futureDay, r.newLastDay());
+    }
 }

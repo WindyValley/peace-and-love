@@ -1,5 +1,6 @@
-- [ ] T-TEST-002.2: 门控真值表补齐：4组合/第三方/动态
+- [x] T-TEST-002.2: 门控真值表补齐：4组合/第三方/动态
 
+**完成备注：** 2026-10-13：新增 NeutralizationScopeTruthTableTest，@CsvSource 参数化 4 组合(isAdapted×白名单)、末影龙未适配直接断言 false(含列入白名单)、未知/第三方 id 无效且对白名单惰性不改变任何判定、白名单动态变更同一入口立即翻转
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -16,10 +17,10 @@
 
 ## 验收标准
 
-- [ ] 参数化覆盖 4 种基础组合（isAdapted × inWhitelist）的 isNeutralized/canTrade
-- [ ] 末影龙（未适配）无论是否在白名单，isNeutralized 直接断言为 false（不只走 isIneffectiveWhitelistEntry）
-- [ ] 第三方 Mod 生物（未注册/未知 id）一律 false
-- [ ] 白名单动态变更后，同一判定入口立即改变（不缓存）的显式断言
+- [x] 参数化覆盖 4 种基础组合（isAdapted × inWhitelist）的 isNeutralized/canTrade
+- [x] 末影龙（未适配）无论是否在白名单，isNeutralized 直接断言为 false（不只走 isIneffectiveWhitelistEntry）
+- [x] 第三方 Mod 生物（未注册/未知 id）一律 false
+- [x] 白名单动态变更后，同一判定入口立即改变（不缓存）的显式断言
 
 ## 技术要点
 

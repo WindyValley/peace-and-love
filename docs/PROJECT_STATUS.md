@@ -14,9 +14,13 @@
 
 ## 当前阶段（2026-10-13 更新）：交易系统 Sprint —— 右键 GUI + 补货/限购 + 真实成交链路全部真机闭环（T-TRADE-003/004/005 done）
 
-**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 32/44（73%，2026-10-13 按证据回填脱节卡后）**，另有 2 卡部分完成（T-TEST-003 5/6、T-TEST-004 6/7）。common 单测 **186 全绿（0 skip）**。
+**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 36/44（82%，2026-10-13）**，TEST 域 4 卡全 done，无 in-progress 卡。剩余 todo：特殊适配 NEUT-005/006/007（3）+ 发布 REL-001~005（5）。common 单测 **203 全绿（0 skip）**。
 
-> **2026-10-13 任务卡对账回填**（用 eng-decompose 的 task.py，非手改）：上个会话只更新了本文件，任务卡脱节，本次按证据回填——T-CFG-003.2（reload 重建，T-PRICE-003 已真机验）、T-TRADE-002.2（getOffers 已接入且 003~005 真机联调）置 done，父卡 T-CFG-003/T-TRADE-002 聚合转 done；T-TEST-003 勾 5/6、T-TEST-004 勾 6/7（两条验收措辞先勘误）。**核实后确认仍有真实缺口、不回填的卡**：T-TEST-001（110 条黄金基准 JUnit 不存在，仅真机 pricing.scan 70 条 + 6 个代表锚点单测）、T-TEST-002.2（缺末影龙未适配直接 false 断言、未知/第三方 id 用例）、T-TEST-003 第 4 条（lastRestockDay 未来时间容错无测试）、T-TEST-004 第 6 条（Fabric 侧零 PAL 客户端未验，目前 Fabric 只验过 mc-client-rpc 客户端）。
+> **2026-10-13 任务卡对账 + TEST 缺口补齐**（用 eng-decompose 的 task.py，非手改）。
+> ①回填脱节卡：T-CFG-003.2（reload 重建已真机验）、T-TRADE-002.2（getOffers 已接入且 003~005 真机联调）置 done，父卡自动聚合。
+> ②补齐 TEST 四缺口并新增测试（186→203）：**T-TEST-001** 新增 `PricingGoldenTest`，黄金基准 JSON 由 Gradle 从 spike 复制进测试资源（单一真相不入测试树），110 条 price_128/price_64 零误差；**T-TEST-002.2** 新增 `NeutralizationScopeTruthTableTest`（参数化 4 组合 + 末影龙直接断言 + 未知/第三方 id 惰性 + 白名单动态翻转）；**T-TEST-003** 补存档回滚容错用例 6/6；**T-TEST-004** 第 6 条 Fabric 侧凭 `1aef221` 真机回填（零 PAL 类 fabric 客户端，与 NeoForge 同边界）。
+> ③**黄金比对抓到 1 个真实实现差异并修复**：`PricingEngine` 原用 `Math.round`（半数进位），spike/黄金基准是 Python `round`（HALF_EVEN 银行家舍入）；全 110 条唯一落在 x.5 的 rabbit/rabbit_foot（epk=0.1 恰使 pos=0.5）算成 65/33 而非基准 64/32。改用 `Math.rint` 对齐。兔子非 v1.0 适配生物、不进报价表，对在售 70 条价格零影响（真机等值 + 黄金零误差双重保证）。
+> ④TEST-004 两条验收措辞勘误：「原版客户端」=零 PAL 类 mc-client-rpc 驱动客户端（非官方启动器纯原版）；宣传文案归 REL-002/004。
 
 ### 交易健壮性兜底（2026-10-13，成交链路 Mixin 改动的回归保护）
 
