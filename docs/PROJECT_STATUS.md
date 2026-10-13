@@ -439,7 +439,7 @@ Architectury（common / fabric / neoforge）
 - **Notes / 接手必读：**
   - 真机手法、三个睡觉时序坑、构建开关坑均见上文「交接给新会话」段与 mc-client-automation-test skill
   - 38 适配怪只抽验 5 种成交（机制同源）；发版前若求稳可整表扫（T-REL-001 真机清单）
-  - **版本号仍是 0.0.2**（0.0.2 alpha 已发）。本次只合并不发版；下次打 tag 前必须在 `gradle.properties` 升 `mod_version`（SemVer，0.x，不得用 1.0.0），release-ci 从 v* tag 取版本
+  - **0.0.3 alpha 已发布**（2026-10-13，tag `v0.0.3`，GitHub 私有预发布；release-ci 构建双端 jar，已下载回核 zip 完整、元数据 0.0.3、verify-RPC 折叠为 false）。交易 Sprint 随本版上线。以后打新 tag 前先在 `gradle.properties` 升 `mod_version`（SemVer，0.x，不得用 1.0.0），release-ci 从 v* tag 取版本
   - 发布动作 T-REL-005 🔒 须用户显式说「发」；仓库保持私有
   - 下一功能块：NEUT-005（袭击系+潜影贝+幻翼）、NEUT-006（凋灵+监守者）、NEUT-007（末影人凝视+僵尸猪灵群体报复），代码确认零实现
 
