@@ -16,6 +16,19 @@
 
 **分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 30/44（68%）**。common 单测 **186 全绿（0 skip）**。
 
+### 交易健壮性兜底（2026-10-13，成交链路 Mixin 改动的回归保护）
+
+真机 98 服 + mc-client-rpc 干净客户端，新增两个自动化脚本，全绿：
+
+| 脚本 | 覆盖 | 结果 |
+|------|------|------|
+| `verify_native_merchant_regression.py` | 原生**村民 + 流浪商人**（已是 Merchant 的实体）：空手右键开窗、原生成交（面包入包 uses=1）、**存档无 `pal_offers` 污染、保留原版 `Offers`** | 12 项 PASS |
+| `verify_dual_slot_payment.py` | 单价 >64 走 **costB 双槽**：`price_overrides` 临时把腐肉设 100，断言拆 64+36、实扣 100（残 28 留货币槽不扣）、产物入包、uses=1 即时售罄；finally 还原配置 | D1~D7 PASS |
+
+- **静态依据（读 1.21.1 源码）**：Mixin 打在 `Mob` 基类，对 AbstractVillager 子类靠 Java 虚分派 + null 短路零干扰——`getOffers/notifyTrade` 子类已 override（走村民自带 resend，不会重发两次）；`mobInteract` 成年村民正常交易走子类不调 super，刷怪蛋/睡觉等调 super 时门控 `canTrade(村民)=false` FALL_THROUGH；tick 注入 `pal$offers==null` 短路；save 注入 null 立即 return 不写 NBT。
+- **默认配置就有双槽价**：铁锭/胡萝卜/土豆因掉落稀有定价 117（64+53），双槽不是边缘场景，真机验证有实际意义。
+- **Fabric**：`:fabric:build` SUCCESSFUL，remap jar 内确认含 `MobMerchantMixin.class`、全部 trade 类与 `peaceandlove-common.mixins.json` 引用（sponge mixin 两端同源）。**真机 Fabric 未测**（98 是 NeoForge 服，需另搭 Fabric 服）。
+
 ### 本轮完成（T-TRADE-005 真实成交链路，真机两轮全绿）
 
 | 任务 | 产出 | 验证 |
@@ -81,7 +94,7 @@
 - **下一个任务：交易 Sprint 主体已闭环（003/004/005）**。右键开窗、限购/双时钟补货持久化、真实成交扣款出货、买光即时售罄、补货后再购均真机通过。**建议下一步先补 005 的未测边界**（见下），或按 WBS 推进交易之后的中立化/AI 任务（查任务列表里依赖已满足的下一张叶子卡）。
 - **reload/购买次数旧账④已收口**：getOffers 用 PriceTable 内容指纹 + maxUses 作签名，改价/改限购才重建（uses 归零），**reload 没改内容时保留购买次数**；uses/补货时刻随实体 NBT 持久化，跨区块卸载/重启不丢（004 真机 A/C 验过）。
 - **验证方式**：runClient 真机客户端自动化（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；P2 用它自己的干净客户端，通用驱动留那边，PAL 业务脚本放本仓 `tests/automation/`）。一条 python 跑完连服/召唤/采样/读日志，别写 bash sleep 一行流。部署用 `tests/automation/deploy_server.py`。**每次真机验完务必 `client.quit` 关客户端，别空放吃资源。**
-- **未测路径（005 边界，后续真机）**：双槽（单价 >64，需 costB）真实支付、其余适配怪种（非僵尸）成交、Fabric 端成交/补货、村民/流浪商人原生 Merchant 右键零回归（Mixin 对它们 getOffers 返回原样、mobInteract 客户端不干预，理论零影响，值得扫一眼）、玩家真实睡觉过夜触发补货（目前用 `/time add` 等价同路径验证，未真人上床）。单次成交与睡觉补货再购已验。
+- **未测路径（后续真机）**：其余适配怪种（非僵尸）成交、Fabric 端成交/补货真机（`:fabric:build` 已过、Mixin/交易类确认进 fabric jar，但 98 是 NeoForge 服，需另搭 Fabric 服才能真机）、玩家真实睡觉过夜触发补货（目前用 `/time add` 等价同路径验证，未真人上床）。**已测**：单槽/双槽(64+36)支付、限购、即时售罄、睡觉补货再购、原生村民/流浪商人交易零回归且存档无 pal_offers 污染、购买次数/补货持久化。
 - **关键类**：`trade/RestockManager`（补货双时钟纯算术）、`trade/TradeInteraction`（门控纯函数）、`trade/TradeOfferBuilder`/`TradeSpec#toOffer(maxUses)`、`mixin/MobMerchantMixin`（Merchant 注入 + mobInteract + tick 补货 + **notifyTrade 成交后重发报价** + NBT save/load）、`anger/AngerController#isAngry(Mob)`、`pricing/PriceTable#fingerprint`。
 - **补货真机手法**：单调 gameTime 腿用 `restock_interval_days` 临时设 0.005（120t≈6s）验在线补货；**睡觉/跨自然日腿用 `/time add 24000`**（只快进 getDayTime、不碰 gameTime，源码证实与玩家睡觉同走 `ServerLevel#setDayTime`），probe 新增回显 `dayTime/day` 配合判定；用「tp 玩家 512 格远→probe 找不到怪」确认区块真卸载验持久化/离线补算；整数天/边界/无售罄靠单测，finally 还原配置。
 - **构建开关坑**：`:common:test` 加 `--configure-on-demand` 可跳 fabric 配置；但 `:neoforge:build` 出 jar **不能**加它（报 accessWidenerPath is final），去掉即可。部署 jar 必须 `-PenableVerifyRpc=true`，否则 BuildFlags 常量折叠、产物无 RPC 且对不上。
