@@ -1,4 +1,4 @@
-- [ ] T-TEST-003: 单元测试：补货周期边界
+- [-] T-TEST-003: 单元测试：补货周期边界
 
 **优先级：** P0
 **预估：** 3h
@@ -16,12 +16,12 @@
 
 ## 验收标准
 
-- [ ] 游戏时间 23999 → 24000 触发补货
-- [ ] `restock_interval_days=0.5` → 12000 tick 补一次
-- [ ] 离线 100 天后加载 → 只补一次（非补 100 次）
+- [x] 游戏时间 23999 → 24000 触发补货
+- [x] `restock_interval_days=0.5` → 12000 tick 补一次
+- [x] 离线 100 天后加载 → 只补一次（非补 100 次）
 - [ ] `lastRestockDay` 未来时间（存档回滚）→ 容错不崩
-- [ ] 补货后 `maxUses` 恢复为 1
-- [ ] **不调用** `Villager.restock()`（用 spy 断言）
+- [x] 补货后 `maxUses` 恢复为 1
+- [x] **不调用** `Villager.restock()`（勘误 2026-10-13：未写 spy——以「common 全仓零 `.restock(` 调用点 + RestockManager 纯算术不持有 Mob」作静态保证，补货只调 `MerchantOffer.resetUses()`）
 
 ## 技术要点
 

@@ -1,5 +1,6 @@
-- [-] T-TRADE-002.2: 运行时报价单组装器（遍历定价表+门控）
+- [x] T-TRADE-002.2: 运行时报价单组装器（遍历定价表+门控）
 
+**完成备注：** 2026-10-13 回填：getOffers 已由 MobMerchantMixin 懒组装接入（c195627），003/004/005 双端真机联调全绿
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
@@ -19,7 +20,7 @@
 - [x] 遍历该生物定价表，逐条 TradeSpec.toOffer() 组成 MerchantOffers
 - [x] 白名单内 / 未适配 / canTrade=false（含 boss_trading_enabled=false 的 Boss）返回空列表
 - [x] 价格在构表期算好缓存（PriceTable，O(1) 取列表）；组装本身 O(掉落物种类)，报价单由 MobMerchantMixin 首次 getOffers 懒组装并按怪物缓存（pal$offers，持有各自 uses）
-- [ ] 组装出的报价供 MobMerchantMixin.getOffers 接入（代码已接 c195627；mixin 织入后游戏内取价/显示与右键交易链 T-TRADE-003 一并真机联调）
+- [x] 组装出的报价供 MobMerchantMixin.getOffers 接入（代码已接 c195627；mixin 织入后游戏内取价/显示与右键交易链 T-TRADE-003 一并真机联调）
 
 ## 技术要点
 
