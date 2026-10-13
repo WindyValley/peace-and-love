@@ -6,8 +6,16 @@ package top.windyvalley.peaceandlove.pricing;
  * <p>把掉落物的「每击杀期望产出」(epk) 映射为 [1, max] 的整数绿宝石价：
  * <pre>
  * pos   = log(cheap / epk) / log(cheap / rare)     // 归一化到 [0,1]
- * price = clamp(round(1 + (max-1) × pos), 1, max)
+ * price = clamp(roundHalfEven(1 + (max-1) × pos), 1, max)
  * </pre>
+ *
+ * <p>取整用<b>半数取偶（banker's rounding，{@link Math#rint}）</b>而非
+ * {@code Math.round} 的半数进位：定价黄金基准（spike 产出的
+ * {@code final_pricing_128.json}，T-TEST-001 以零误差钉死）由 Python
+ * {@code round()} 生成，Python 采用 HALF_EVEN。全 110 条基线路径中唯一落在
+ * x.5 的是 rabbit/rabbit_foot（epk=0.1 恰使 pos=0.5：cheap/epk=20、
+ * cheap/rare=400=20²）。Java 必须复现同一舍入，否则该条差 1。兔子不是 v1.0
+ * 适配生物、不进实际报价表，故对 70 条在售价格零影响（真机等值已证）。
  *
  * <p>性质：产出每减半，价格等量上升（等比稀有度 → 等差价格）；
  * epk 越小（越稀有）价格越高，全局单调不增（相对 epk 单调不增）。
@@ -56,7 +64,8 @@ public final class PricingEngine {
         }
 
         double pos = Math.log(cheap / epk) / Math.log(cheap / rare);
-        long rounded = Math.round(1 + (max - 1) * pos);
+        // HALF_EVEN（Math.rint）对齐 Python spike/黄金基准的 round，见类注释。
+        long rounded = (long) Math.rint(1 + (max - 1) * pos);
         return Math.clamp(rounded, 1, max);
     }
 }
