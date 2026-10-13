@@ -8,7 +8,105 @@
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
 
-- **最后更新**：2026-10-08
+- **最后更新**：2026-10-13
+
+---
+
+## 当前阶段（2026-10-13 更新）：交易系统 Sprint —— 右键 GUI + 补货/限购 + 真实成交链路全部真机闭环（T-TRADE-003/004/005 done）
+
+**分支**：`feat/trade-system`（功能演进不在 main，未开 PR）。**叶子任务进度 36/44（82%，2026-10-13）**，TEST 域 4 卡全 done，无 in-progress 卡。剩余 todo：特殊适配 NEUT-005/006/007（3）+ 发布 REL-001~005（5）。common 单测 **203 全绿（0 skip）**。
+
+> **2026-10-13 任务卡对账 + TEST 缺口补齐**（用 eng-decompose 的 task.py，非手改）。
+> ①回填脱节卡：T-CFG-003.2（reload 重建已真机验）、T-TRADE-002.2（getOffers 已接入且 003~005 真机联调）置 done，父卡自动聚合。
+> ②补齐 TEST 四缺口并新增测试（186→203）：**T-TEST-001** 新增 `PricingGoldenTest`，黄金基准 JSON 由 Gradle 从 spike 复制进测试资源（单一真相不入测试树），110 条 price_128/price_64 零误差；**T-TEST-002.2** 新增 `NeutralizationScopeTruthTableTest`（参数化 4 组合 + 末影龙直接断言 + 未知/第三方 id 惰性 + 白名单动态翻转）；**T-TEST-003** 补存档回滚容错用例 6/6；**T-TEST-004** 第 6 条 Fabric 侧凭 `1aef221` 真机回填（零 PAL 类 fabric 客户端，与 NeoForge 同边界）。
+> ③**黄金比对抓到 1 个真实实现差异并修复**：`PricingEngine` 原用 `Math.round`（半数进位），spike/黄金基准是 Python `round`（HALF_EVEN 银行家舍入）；全 110 条唯一落在 x.5 的 rabbit/rabbit_foot（epk=0.1 恰使 pos=0.5）算成 65/33 而非基准 64/32。改用 `Math.rint` 对齐。兔子非 v1.0 适配生物、不进报价表，对在售 70 条价格零影响（真机等值 + 黄金零误差双重保证）。
+> ④TEST-004 两条验收措辞勘误：「原版客户端」=零 PAL 类 mc-client-rpc 驱动客户端（非官方启动器纯原版）；宣传文案归 REL-002/004。
+
+### 交易健壮性兜底（2026-10-13，成交链路 Mixin 改动的回归保护）
+
+真机 98 服 + mc-client-rpc 干净客户端，新增两个自动化脚本，全绿：
+
+| 脚本 | 覆盖 | 结果 |
+|------|------|------|
+| `verify_native_merchant_regression.py` | 原生**村民 + 流浪商人**（已是 Merchant 的实体）：空手右键开窗、原生成交（面包入包 uses=1）、**存档无 `pal_offers` 污染、保留原版 `Offers`** | 12 项 PASS |
+| `verify_dual_slot_payment.py` | 单价 >64 走 **costB 双槽**：`price_overrides` 临时把腐肉设 100，断言拆 64+36、实扣 100（残 28 留货币槽不扣）、产物入包、uses=1 即时售罄；finally 还原配置 | D1~D7 PASS |
+
+- **静态依据（读 1.21.1 源码）**：Mixin 打在 `Mob` 基类，对 AbstractVillager 子类靠 Java 虚分派 + null 短路零干扰——`getOffers/notifyTrade` 子类已 override（走村民自带 resend，不会重发两次）；`mobInteract` 成年村民正常交易走子类不调 super，刷怪蛋/睡觉等调 super 时门控 `canTrade(村民)=false` FALL_THROUGH；tick 注入 `pal$offers==null` 短路；save 注入 null 立即 return 不写 NBT。
+- **默认配置就有双槽价**：铁锭/胡萝卜/土豆因掉落稀有定价 117（64+53），双槽不是边缘场景，真机验证有实际意义。
+- **Fabric（真机已过 2026-10-13）**：在 测试机独立目录 `minecraft-fabric` 搭了 **Fabric Loader 0.16.9 + API 0.116.17 + MC 1.21.1** 独立服（端口 25566 / RCON 25576，不碰 NeoForge 主服），mods 放 fabric-api + architectury-fabric + PAL **正式 fabric 包**（不带 verify-RPC，避开 25585 占用）；`:fabric:runClient` fabric 版 mc-client-rpc 客户端连入，`tests/automation/verify_fabric_trade_all.py` 跑全套（monkeypatch RCON 端口到 25576）：**单次成交、买光→睡觉补货→再购、原生村民/流浪商人零回归、双槽(64+36)支付 4 组全 PASS**，与 NeoForge 行为一致。验完 Fabric 服已 `stop`、目录保留待复现，主 NeoForge 服无影响。
+
+### 本轮完成（T-TRADE-005 真实成交链路，真机两轮全绿）
+
+| 任务 | 产出 | 验证 |
+|------|------|------|
+| T-TRADE-005 | PAL：`MobMerchantMixin#notifyTrade` 成交后 `sendMerchantOffers` 重发报价（对齐村民，买光后 GUI 即时红叉）。成交本身零新代码、全走原版 `MerchantMenu/MerchantResultSlot`。驱动仓 mc-client-rpc（commit 3344ae4）：新增 `trade.status/select/take/close` 四原语 + 修复自动关窗不发包 | 真机单次成交 A1~A5 + 买光→睡觉补货→重开再购 S0/B1/B2 全 PASS；common 186 全绿 |
+
+**真机结论**（僵尸腐肉，真实价 16 绿宝石）：
+- 单次成交（`verify_trade_purchase.py`）：空手右键开窗→开窗后给 128 绿宝石→select 出货→take **实扣 16、腐肉入包×2、uses=1、当前 GUI 即时售罄红叉、买光后再 select 无法成交**。
+- 补货再购（`verify_trade_restock_repurchase.py`）：买光→`/time add 24000` 睡觉补货→重开 uses 归零不再售罄→再次真买**腐肉 2→4**→新周期再次售罄。
+
+**关键事实（读源码核实）**：
+- 成交链路零 Villager 强转：选报价=`postButtonClick`(tryMoveItems+SelectTradePacket)；取结果=`MerchantResultSlot.onTake`→`MerchantOffer.take` 按 `getCostA/B` 扣款→回调 `notifyTrade`。
+- 客户端选报价会把货币槽**填满一整组 64**（与需求量无关），服务端只按真实价 shrink、多放的关窗退回；成交价必须读报价 cost，不能读槽内数量。
+- PAL 唯一生产修复=**成交后重发报价包**（原版仅村民在成交路径重发），否则服务端已限购、GUI 仍显示可买。
+- 驱动侧唯一真实 bug=**自动关窗用裸 `mc.setScreen(null)` 不发 ServerboundContainerClosePacket**，服务端 MerchantMenu 不 removed、tradingPlayer 不清空，重开右键被「已在交易」门控挡下（真玩家按 Esc 走 onClose 不受影响）；已改 `player.closeContainer()`。
+- 003 门控仍要求**空手右键**开窗（持绿宝石点怪不行），货币由 GUI 自动从背包挪入——既定设计，测试先开窗再给币。
+
+### 上一轮（T-TRADE-004 补货/限购 + 购买次数持久化；对齐村民双时钟，真机 A/B/C/D 全绿）
+
+| 任务 | 产出 | 验证 |
+|------|------|------|
+| T-TRADE-004 | `RestockManager` 双时钟纯算术（单调 gameTime 滚动间隔 **OR** getDayTime 跨自然日/睡觉腿 + needsToRestock 门控）；config `restock_interval_days` int→double；Mixin tick 补货 + offers/uses NBT 双锚点持久化；PriceTable 内容指纹（改价/改限购才重建）；接通死配置 `max_uses_per_day` | 11 单测（173→184）+ **真机 A/B/C/D PASS** |
+
+**真机结论（runClient mc-client-rpc 干净客户端 + 98 服，脚本 `tests/automation/verify_restock.py`）**：
+- A 持久化：置满 uses→tp 远走使区块真卸载（怪从 loaded 实体消失）→回来 uses 仍 `1/1X`，NBT 往返保住购买次数（防卸载重挂刷货）。
+- B 在线小数周期：interval=0.005 天（120t≈6s），置满后原地等 8s（实测推进 161t）→uses 全 0。
+- C 离线补算：置满→卸载期间世界时钟继续走 234t 跨过周期→回来首 tick uses=0（验收第 5 条）。
+- **D 睡觉腿（本次新增语义）**：interval=1 天（24000t），置满后仅 `/time add 24000`（只走 setDayTime，源码 `TimeCommand.addTime` 证实与玩家睡觉同路径、不碰 gameTime），实测 **gameTime 只 +25t、自然日 1890→1891，uses 即全 0**——证明睡觉能让怪物提前补货。
+- 整数天/边界/无售罄不补/离线大跳由纯逻辑单测覆盖，不干等真机。
+
+**架构关键点（已真机确认）—— 对齐 `Villager#shouldRestock()`**：
+- **两个时钟 OR**：滚动间隔用单调 `level.getGameTime()`（每 tick+1，命令/睡觉改不了）；跨自然日用 `level.getDayTime()/24000`（玩家睡觉、`/time add` 都经 `ServerLevel#setDayTime` 快进此钟）。这是相对旧单时钟实现的关键修正——用户明确要求睡觉参与补货时间计算。
+- **needsToRestock 门控**：至少一条报价 `isOutOfStock()` 才补；没人买则不补且锚点不推进（旧实现锚点无条件网格前移、会与真实购买脱节）。
+- 补货后锚点定到**当前时刻**（对齐村民 OR flag，剩余零头并入下一周期），不再做网格回卷；离线跨再多间隔/天也只补一次。
+- 持久化四字段：`pal_offers`(MerchantOffers.CODEC) + `pal_sig`(内容签名) + `pal_restock_game`(上次 gameTime) + `pal_restock_day`(上次自然日)，只对被右键过/从存档恢复的怪写 NBT；读取兼容旧字段 `pal_restock`。
+- 报价失效签名 = `PriceTable.fingerprint()*31 + max_uses_per_day`：改价/改锚点/改掉落量/改限购才重建（uses 归零）；**reload 没改内容时保留购买次数**（修掉 003「reload 即丢 uses」的瑕疵）。
+- tick 只处理 `pal$offers != null` 的怪，绝不为全部野生怪每 tick 组装报价。
+- 顺手接通此前写死的 `max_uses_per_day`（TradeSpec.toOffer 原本 maxUses=1，config 从未生效）。
+- 绝不调用 `Villager.restock()`（耦合 gossip/demand），只 `MerchantOffer.resetUses()`。
+
+**真机结论（runClient + 测试服 192.0.2.10，NeoForge 1.21.1，脚本 `tests/automation/verify_trade_interaction.py`）**：
+1. 空手右键中立僵尸 → `MerchantScreen` 打开、报价 4 条 ✅
+2. 僵尸在白名单 → 不开（保持原版）✅
+3. `trading_enabled=false` → 不开 ✅
+4. 监守者（自然召唤）+ `boss_trading_enabled=false` → 不开 ✅
+5. 监守者 + `boss_trading_enabled=true` → 打开、报价 1 条（幽匿催发体）✅
+6. 玩家攻击后仇恨中（anger=PLAYER_DIRECT）→ 不开 ✅
+7. 主手持物右键 → 不开（保留原版交互）✅
+8. 未适配生物牛 → 不开（保持原版）✅
+
+**架构关键点（已真机确认，别再走回头路）**：
+- **客户端完全不干预**：客户端物理端拿不到服务端 config/仇恨/报价（Brain 记忆不同步），在客户端猜门控会误拦村民。开 GUI 完全由服务端 `openTradingScreen` 的 openMenu + `ClientboundMerchantOffersPacket` 驱动；客户端保持原版 PASS。
+  - **P2 已真机闭环（2026-10-12）**：用**独立 mc-client-rpc 工程**的 runClient（runtime classpath 只有测试驱动 mod + architectury，`run/mods` 空，零 PAL 类）连 PAL 服务端，同一套 8 例全 PASS。边界：客户端带 mc-client-rpc（仅开测试 JSON-RPC、不注册游戏内容/不碰交易），不是官方启动器零 mod，但命题「玩家不装 PAL 即可交易」成立。
+- 门控六条件（canTrade/非仇恨/存活/未在交易/双手空手/有货）抽到纯函数 `TradeInteraction.evaluate` 单测；空报价吞交互不开窗（对齐村民「没货」CONSUME）。
+- `getTradingPlayer()!=null` 守卫防止客户端同一次右键的 interactAt+interact 两包重复 openMenu。
+- **自然监守者召唤配方**：`/summon warden` 5 秒钻地自灭（NoAI 也挡不住）；必须铺直道放 `sculk_shrieker[can_summon=true]`（NBT 写法会被静默忽略，要用 blockstate；判定用 `execute if block …[can_summon=true]`，`data get block` 看不到 blockstate），玩家**直线来回走**穿过尖啸体攒 STEP 振动，warning_level 1→4 约 38s 召出。画圈贴墙原地踏步无位移=无 STEP，召不出来。
+- **清手命令坑**：`item replace entity @p weapon.mainhand []` 回显成功但不清槽；必须 `… with air`。
+
+**mc-client-rpc 侧**：新增 `player.interact` RPC（走真实 `MultiPlayerGameMode.interact` 发 INTERACT 包，延迟读 `mc.screen` 是否 MerchantScreen + 报价数，验完自动关窗）。
+
+### 交接给新会话（cold start 必读）
+
+- **下一个任务：交易 Sprint 主体已闭环（003/004/005）**。右键开窗、限购/双时钟补货持久化、真实成交扣款出货、买光即时售罄、补货后再购均真机通过。**建议下一步先补 005 的未测边界**（见下），或按 WBS 推进交易之后的中立化/AI 任务（查任务列表里依赖已满足的下一张叶子卡）。
+- **reload/购买次数旧账④已收口**：getOffers 用 PriceTable 内容指纹 + maxUses 作签名，改价/改限购才重建（uses 归零），**reload 没改内容时保留购买次数**；uses/补货时刻随实体 NBT 持久化，跨区块卸载/重启不丢（004 真机 A/C 验过）。
+- **验证方式**：runClient 真机客户端自动化（独立仓 `WindyValley/mc-client-rpc`，真实按键映射驱动；P2 用它自己的干净客户端，通用驱动留那边，PAL 业务脚本放本仓 `tests/automation/`）。一条 python 跑完连服/召唤/采样/读日志，别写 bash sleep 一行流。部署用 `tests/automation/deploy_server.py`。**每次真机验完务必 `client.quit` 关客户端，别空放吃资源。**
+- **未测路径（后续真机）**：覆盖未全的其余 33 个适配怪种（本次抽验 5 种覆盖 goal/brain 两类 AI，机制同源；如要发版前求稳可整表扫）。**已测（NeoForge + Fabric 双端真机）**：单槽/双槽(64+36)支付、限购、即时售罄、睡觉补货再购（**含真人上床**）、原生村民/流浪商人交易零回归且存档无 pal_offers 污染、购买次数/补货持久化、非僵尸怪种成交（骷髅/苦力怕/蜘蛛/烈焰人 Goal 系 + 僵尸疣猪兽 Brain 系，各 5 断言）。
+- **真人睡觉补货真机（2026-10-13，`verify_other_mobs_and_real_sleep.py`）**：真床右键过夜（非 `/time` 模拟），买光→`time set 13000`→`player.useBed`（mc-client-rpc 新增原语，真实 `gameMode.useItemOn`）→SleepTimer 10→0 过夜、daytime 夜(13108)→晨(13) 回卷→睡觉腿补货 uses 归零→再次真买。**三个时序坑**：① 判入睡读服务端 `SleepTimer`（Bed/SleepingPos/Sleeping 的 data get 都读不到）；② 跨日判据用 `time query daytime` 夜→晨回卷，**不能用 `time query day`**（它是单调 gameTime/24000，睡觉只推进 getDayTime 不推进 gameTime，query day 不变——PAL 补货跨日腿正是用 getDayTime()/24000）；③ **必须在怪首次开窗(锚定补货自然日)之前 `time set 13000`**，开窗后再回拨会让睡觉后相对锚点自然日不 +1、不补货。床放怪南 24 格（超 BedBlock 8 格敌怪校验、仍在 tick 范围继续补货），睡前 `execute as Dev at Dev run kill @e[distance=..16]`（裸 RCON distance 原点是出生点不是玩家），`playersSleepingPercentage=0` 单人过夜。
+- **关键类**：`trade/RestockManager`（补货双时钟纯算术）、`trade/TradeInteraction`（门控纯函数）、`trade/TradeOfferBuilder`/`TradeSpec#toOffer(maxUses)`、`mixin/MobMerchantMixin`（Merchant 注入 + mobInteract + tick 补货 + **notifyTrade 成交后重发报价** + NBT save/load）、`anger/AngerController#isAngry(Mob)`、`pricing/PriceTable#fingerprint`。
+- **补货真机手法**：单调 gameTime 腿用 `restock_interval_days` 临时设 0.005（120t≈6s）验在线补货；**睡觉/跨自然日腿用 `/time add 24000`**（只快进 getDayTime、不碰 gameTime，源码证实与玩家睡觉同走 `ServerLevel#setDayTime`），probe 新增回显 `dayTime/day` 配合判定；用「tp 玩家 512 格远→probe 找不到怪」确认区块真卸载验持久化/离线补算；整数天/边界/无售罄靠单测，finally 还原配置。
+- **构建开关坑**：`:common:test` 加 `--configure-on-demand` 可跳 fabric 配置；但 `:neoforge:build` 出 jar **不能**加它（报 accessWidenerPath is final），去掉即可。部署 jar 必须 `-PenableVerifyRpc=true`，否则 BuildFlags 常量折叠、产物无 RPC 且对不上。
+- **工程改进**：任务脚本 `task.py` 已补 `check/uncheck <序号>` 子命令（支持「已写未验」部分勾选，别再手改 checkbox）。
+- 发布（T-REL-005）🔒 须用户显式说「发」；仓库保持私有。
 
 ---
 
@@ -102,14 +200,14 @@ Brain 系 6 种全部**双向**通过：
 
 ---
 
-## P1~P4 验证（2026-09-11 完成 3/4）
+## P1~P4 验证（P1/P3/P4 2026-09-11；P2 2026-10-12 真机闭环，4/4 全完成）
 
 详见 `P1-P4-VERIFY.md`。验证工程 `spikes/p1-p3-probe/`（真实 Architectury 三模块，双端构建通过）。
 
 | # | 验证项 | 结论 |
 |---|--------|------|
 | **P1** | NeoForge 是否需 AT | ✅ **不需要** —— 真实服务端实测 `Merchant.isAssignableFrom(Mob.class)=true`，accesswidener 空 |
-| **P2** | 客户端不装模组能否交易 | ⚠️ **未实测** —— 理论成立（`openTradingScreen` 是 default 走原版协议），但需双端联机验证 |
+| **P2** | 客户端不装模组能否交易 | ✅ **能**（2026-10-12 真机）— 零 PAL 类的 mc-client-rpc 客户端连 PAL 服务端，右键开原版 GUI、报价同步，8/8 PASS；详见 `P1-P4-VERIFY.md` §P2 |
 | **P3** | 注入 Mob 基类 vs 38 类 | ✅ **维持基类** —— 82 concrete 子类，额外 44 个，每实例 ~24 B 懒加载，可忽略 |
 | **P4** | `NeutralMob` 冲突 | ✅ **无冲突**，但**原假设被推翻** —— 真实交集是末影人 + 僵尸猪灵（Goal 系），非猪灵等 4 个 Brain 系 |
 
@@ -326,6 +424,24 @@ Architectury（common / fabric / neoforge）
 | JDK | Zulu 21（`~/scoop/apps/zulufx21-jdk`） |
 
 ## Handoff
+
+### 2026-10-13 交易 Sprint 收口 → 合入 main
+
+- **From：** trade-system（Hermes，分支 `feat/trade-system`）
+- **To：** 下一段开发（特殊适配 NEUT-005/006/007）/ 发布（REL-*）
+- **What：** 交易系统主体在 feature 分支完成并双端真机闭环，现合入 `main`
+  - 定价域全 done（扫描/对数曲线/PriceTable/单调自检），common 203 单测全绿
+  - T-TRADE-003/004/005：空手右键开窗、双时钟补货+购买次数 NBT 持久化、真实成交扣款出货、买光即时售罄、补货后再购
+  - 健壮性兜底：原生村民/流浪商人零回归且存档无 pal_offers 污染、双槽(64+36)支付、非僵尸怪种成交（Goal/Brain 两类 AI）
+  - P2 命题双端真机成立：零 PAL 类客户端可交易（NeoForge + Fabric），详见 P1-P4-VERIFY.md
+  - 修复：成交后重发报价；自动关窗改为发 close 包（在 mc-client-rpc）；定价取整改 Math.rint(HALF_EVEN) 对齐黄金基准
+- **Status：** done（叶子 36/44 = 82%，全卡 40/48 = 83%，TEST 域清零）
+- **Notes / 接手必读：**
+  - 真机手法、三个睡觉时序坑、构建开关坑均见上文「交接给新会话」段与 mc-client-automation-test skill
+  - 38 适配怪只抽验 5 种成交（机制同源）；发版前若求稳可整表扫（T-REL-001 真机清单）
+  - **版本号仍是 0.0.2**（0.0.2 alpha 已发）。本次只合并不发版；下次打 tag 前必须在 `gradle.properties` 升 `mod_version`（SemVer，0.x，不得用 1.0.0），release-ci 从 v* tag 取版本
+  - 发布动作 T-REL-005 🔒 须用户显式说「发」；仓库保持私有
+  - 下一功能块：NEUT-005（袭击系+潜影贝+幻翼）、NEUT-006（凋灵+监守者）、NEUT-007（末影人凝视+僵尸猪灵群体报复），代码确认零实现
 
 ```
 From: spike (Hermes)

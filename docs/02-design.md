@@ -339,7 +339,10 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override public void setTradingPlayer(Player p)      { pal$tradingPlayer = p; }
     @Override public Player getTradingPlayer()            { return pal$tradingPlayer; }
     @Override public void overrideOffers(MerchantOffers o){ pal$offers = o; }
-    @Override public void notifyTrade(MerchantOffer offer){ offer.increaseUses(); }
+    @Override public void notifyTrade(MerchantOffer offer){
+        offer.increaseUses();
+        pal$resendOffersToTrader();   // 见 §5.4：成交后重发报价，客户端即时显示售罄红叉
+    }
     @Override public void notifyTradeUpdated(ItemStack s) { /* 音效等 */ }
     @Override public int  getVillagerXp()                 { return 0; }
     @Override public void overrideXp(int xp)              { }
@@ -351,25 +354,56 @@ public abstract class MobMerchantMixin implements Merchant {
     @Override
     public MerchantOffers getOffers() {
         Mob self = (Mob)(Object) this;
-        if (pal$offers == null) {
-            pal$offers = TradeOfferBuilder.build(self.getType());
+        if (self.level().isClientSide) return pal$offers == null ? pal$EMPTY : pal$offers;
+        if (!NeutralizationScope.canTrade(self.getType(), cfg)) return pal$EMPTY;  // 零分配
+        PriceTable table = PeaceAndLove.priceTable().table();
+        // 失效签名 = 定价内容指纹 + max_uses_per_day：改价/改限购才重建（uses 归零），
+        // reload 没改内容则保留购买次数（T-TRADE-004 真机验证）。
+        long sig = table.fingerprint() * 31 + cfg.max_uses_per_day();
+        if (pal$offers == null || pal$offersSig != sig) {
+            pal$offers = TradeOfferBuilder.assemble(self.getType(), cfg, table);
+            pal$offersSig = sig;
+            if (pal$lastRestockGame < 0) {
+                pal$lastRestockGame = self.level().getGameTime();
+                pal$lastRestockDay  = self.level().getDayTime() / 24000L;
+            }
         }
-        RestockManager.tick(self, pal$offers);   // 每日补货
-        return pal$offers;
+        return pal$offers;   // tick 里 RestockManager 按双时钟(滚动间隔 OR 跨自然日)清零 uses
     }
 
-    /** 右键交互 → 复用原版 default 实现的 openTradingScreen */
+    /**
+     * 右键交互 → 打开原版交易 GUI（T-TRADE-003，已真机验证）。
+     *
+     * 关键：服务端权威，客户端【完全不干预】。客户端物理端没有服务端配置 /
+     * 仇恨 / 报价（Brain 记忆不与客户端同步），在客户端猜门控会对村民等未适配
+     * 实体产生错误 SUCCESS 预测；开界面完全由服务端 openTradingScreen 的
+     * openMenu + ClientboundMerchantOffersPacket 驱动，天然支持客户端不装 mod
+     * （P2 已真机验证：零 PAL 类客户端照常交易，见 P1-P4-VERIFY §P2）。
+     *
+     * 门控真值表抽到纯函数 TradeInteraction.evaluate 单测覆盖，这里只抽取事实。
+     */
     @Inject(method = "mobInteract", at = @At("HEAD"), cancellable = true)
-    private void pal$onInteract(Player player, InteractionHand hand,
-                                CallbackInfoReturnable<InteractionResult> cir) {
+    private void pal$onMobInteract(Player player, InteractionHand hand,
+                                   CallbackInfoReturnable<InteractionResult> cir) {
         Mob self = (Mob)(Object) this;
-        if (!NeutralizationScope.canTrade(self.getType())) return;
-        if (AngerController.isAngry(self))                 return;   // 敌对时不能交易
-        if (level().isClientSide) { cir.setReturnValue(InteractionResult.SUCCESS); return; }
+        if (self.level().isClientSide) return;                 // 客户端放行原版 PASS
 
-        setTradingPlayer(player);
-        openTradingScreen(player, self.getDisplayName(), 1);   // ★ 原版 default 实现
-        cir.setReturnValue(InteractionResult.CONSUME);
+        boolean bothHandsEmpty =
+                player.getItemInHand(MAIN_HAND).isEmpty()
+             && player.getItemInHand(OFF_HAND).isEmpty();
+        Decision d = TradeInteraction.evaluate(
+                NeutralizationScope.canTrade(self.getType(), cfg),  // 适配+白名单+开关+boss
+                AngerController.isAngry(self),                    // 三路仇恨，见 §4.2/AngerController
+                self.isAlive(),
+                getTradingPlayer() == null,                       // 防 interactAt+interact 重复开窗
+                bothHandsEmpty,                                   // 持物保留原版交互
+                !getOffers().isEmpty());                          // 空报价=没货
+        if (d == FALL_THROUGH) return;                           // 不注入，保持原版
+        if (hand == MAIN_HAND && d == OPEN) {
+            setTradingPlayer(player);
+            openTradingScreen(player, self.getDisplayName(), 0); // ★ 原版 default 实现
+        }
+        cir.setReturnValue(InteractionResult.CONSUME);           // OPEN 与 EMPTY_OFFERS 都吞交互
     }
 
     /** NBT 持久化：只需存 lastRestockDay，offers 由原版 CODEC 覆盖 */
@@ -448,23 +482,101 @@ if (NeutralizationScope.isNeutralized(type) && !AngerController.isAngry(mob)) {
 
 > ⚠️ 性能：仅对 6 个 Brain 系生物执行，且有 `isNeutralized` 快速判定，开销可接受。dev 阶段需实测。
 
-### 5.3 每日补货
+### 5.3 每周期补货（T-TRADE-004，已真机验证）—— 对齐村民双时钟
+
+判定抽到纯算术 `RestockManager.evaluate`（不依赖 MC，可单测），**语义对齐原版村民
+`Villager#shouldRestock()` 的两个时钟**，但去掉其职业经验 / demand 涨价 / 每日次数上限：
+
+| 时钟 | 取值 | 作用 |
+|---|---|---|
+| 单调世界时钟 | `level.getGameTime()` | 滚动间隔腿：距上次实际补货达 `restock_interval_days`（支持小数，0.5=12000t）即允许补 |
+| 自然日时钟 | `level.getDayTime()/24000` | 跨自然日腿：天数比上次补货时变大即允许补。**玩家睡觉、`/time add` 都快进 getDayTime（同走 `ServerLevel#setDayTime`），故睡觉能让怪物提前补货**；它不碰 gameTime |
+
+两腿 OR，且都还要过 **`needsToRestock`**（至少一条报价 `isOutOfStock()`，对应村民同名判定）：
+没有买光的报价就不补、**锚点也不推进**（避免锚点因空转与真实购买脱节）。离线卸载期间不 tick，
+重挂后首 tick 一次性比较两个时钟，跨多少间隔/天都只补一次（与村民 flag OR 一致）。
 
 ```java
-public final class RestockManager {
-    public static void tick(Mob mob, MerchantOffers offers) {
-        long today = mob.level().getDayTime() / 24000L;
-        long last  = getLastRestockDay(mob);
-        int  period = ConfigManager.get().restockIntervalDays;   // 默认 1
+// 返回 (是否补货, 新的上次 gameTime, 新的上次自然日)
+static RestockResult evaluate(long gameTime, long dayTime, long lastGame, long lastDay,
+                              double intervalDays, boolean hasStockedOut) {
+    long today = dayTime / 24000L;
+    if (lastGame < 0)            return new RestockResult(false, gameTime, today); // 首次只锚定
+    if (!hasStockedOut)          return new RestockResult(false, lastGame, lastDay);// 无售罄:不补,锚点不动
+    boolean byInterval = gameTime - lastGame >= max(1, round(intervalDays*24000));
+    boolean byDayChange = today > lastDay;                                        // 睡过一夜
+    if (byInterval || byDayChange) return new RestockResult(true, gameTime, today);// 锚点定当前,不网格回卷
+    return new RestockResult(false, lastGame, lastDay);
+}
+// Mixin tick：if (r.restocked()) RestockManager.resetUses(offers);
+```
 
-        if (last < 0 || today - last >= period) {
-            // ⚠️ 不能调用 Villager.restock() —— 它耦合 gossip/demand/价格波动
-            offers.forEach(MerchantOffer::resetUses);
-            setLastRestockDay(mob, today);
-        }
+> **为什么放弃旧的单时钟+网格对齐**：旧实现只看 gameTime 且锚点无条件按周期网格前移，
+> ①玩家睡觉不参与补货（与村民直觉不符，用户明确要求睡觉应影响补货时间）；②没人买时锚点也
+> 空转，"上次补货时刻"与真实购买脱节。现模型与村民同源、锚点即上次实际补货时刻。
+>
+> ⚠️ 绝不调 `Villager.restock()`（它先 `updateDemand()` 做 catchUpDemand 涨价 + 职业经验）；
+> 只 `MerchantOffer.resetUses()`。
+>
+> **持久化**（防卸载重挂刷货）：`pal_offers`(MerchantOffers.CODEC) + `pal_sig`(内容签名)
+> + `pal_restock_game`(上次 gameTime) + `pal_restock_day`(上次自然日) 随实体 NBT 存取，
+> 只写被右键过/从存档恢复的怪。读取兼容旧字段 `pal_restock`（=gameTime）。
+> 真机四组验证全绿：A 跨卸载购买次数保留 / B 在线小数周期补 / C 离线跨周期加载补算 /
+> **D 睡觉腿——interval=1 天，仅 `/time add 24000`（gameTime 实测只 +25 tick）day+1 即清零**。
+
+### 5.4 真实成交链路（T-TRADE-005，已真机验证）
+
+注入 Merchant 后成交**完全复用原版、零 Villager 强转**，无需自写扣款/出货：
+
+```
+客户端点报价按钮            服务端
+MerchantScreen.postButtonClick
+  menu.setSelectionHint(i)
+  menu.tryMoveItems(i) ── 本地把绿宝石挪入货币槽(预测，尽量填满一组64)
+  send(SelectTradePacket) ──→ handleSelectTrade → menu.tryMoveItems(i)（权威再挪一次）
+客户端取结果(Shift点slot2)
+  gameMode.handleInventoryMouseClick(QUICK_MOVE,2)
+        ──→ MerchantResultSlot.onTake
+              offer.take(costA,costB)          // 按 getCostA/B 真实价 shrink 货币
+              merchant.notifyTrade(offer)      // ★ 我们注入：increaseUses + 重发报价
+              awardStat(TRADED_WITH_VILLAGER)
+              merchant.overrideXp(...)          // 我们空实现，xp 恒 0
+```
+
+**关键点 1 — 成交价读报价、不读货币槽**：`MerchantMenu.moveFromInventoryToPaymentSlot`
+会把货币槽尽量填满一整组（64），与需求量无关；`MerchantOffer.take` 只按
+`getCostA()/getCostB()`（本 mod multiplier=0，即配置价）shrink，多放的留槽内、关窗退回。
+真机：腐肉真实价 16，槽里被填 64，实际只扣 16。
+
+**关键点 2 — 成交后必须重发报价（PAL 唯一生产修复）**：原版只有村民
+`Villager#resendOffersToTradingPlayer()` 在成交路径把更新后的报价重发给客户端；
+开窗只发一次。我们的 `notifyTrade` 对齐之：
+
+```java
+@Override public void notifyTrade(MerchantOffer offer) {
+    offer.increaseUses();
+    Player tp = getTradingPlayer();
+    if (tp instanceof ServerPlayer sp && pal$offers != null && !pal$offers.isEmpty()
+            && sp.containerMenu instanceof MerchantMenu) {
+        sp.sendMerchantOffers(sp.containerMenu.containerId, pal$offers,
+                0, getVillagerXp(), showProgressBar(), canRestock());
     }
 }
 ```
+
+客户端 `handleMerchantOffers → menu.setOffers(...)`，于是买光（uses==maxUses）后**当前 GUI
+立即显示红叉**，不必重开。不重发则服务端已限购、界面却仍显示可买。
+
+**关键点 3 — 关窗必须发包**：真玩家按 Esc 走 `AbstractContainerScreen.onClose →
+LocalPlayer.closeContainer()`（发 ServerboundContainerClosePacket + 本地关屏），服务端
+`MerchantMenu.removed` 才 `setTradingPlayer(null)` 并把货币槽剩余退回背包。自动化驱动
+（mc-client-rpc）若只 `mc.setScreen(null)` 则不发包，服务端交易状态不释放、之后右键重开被
+「已在交易」门控挡下——该 bug 在驱动仓修复（trade.close / interact autoClose 均改走
+player.closeContainer）。
+
+> 真机两轮全绿：单次成交 A1~A5（开窗/给币/选报价出货/实扣 16/腐肉入包×2/uses+1/
+> 即时售罄/买光后限购）；买光→`/time add 24000` 睡觉补货→重开 uses 归零→再买腐肉 2→4
+> →新周期再次售罄。
 
 ---
 
@@ -553,7 +665,7 @@ public final class RestockManager {
 | 9 | 脱战 30 秒 | 恢复中立，可再次交易 |
 | 10 | 白名单热重载 | 移出掠夺者 → 立即中立化；加回 → 恢复原版行为 |
 | 11 | 装第三方怪物 Mod | 其生物**完全不受影响** |
-| 12 | 客户端不装模组 | 能否正常交易（P2） |
+| 12 | 客户端不装模组 | ✅ 能正常交易（P2 已真机验证 2026-10-12，见 P1-P4-VERIFY §P2） |
 
 ---
 

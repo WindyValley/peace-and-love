@@ -1,6 +1,5 @@
-# T-PRICE-002: PriceCalculator 对数曲线
+- [x] T-PRICE-002: PriceCalculator 对数曲线
 
-**状态：** todo
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -16,13 +15,10 @@
 - 设计：`../02-design.md` §3.3
 - 决策：`../adr/003`
 
-## 验收标准
+## 子任务（状态由子任务聚合，勿手改本卡状态）
 
-- [ ] `pos = log(epk_cheap/epk) / log(epk_cheap/epk_rare)`
-- [ ] `price = 1 + (price_max-1) × pos`，clamp 到 [1, price_max]
-- [ ] `epk_cheap` / `epk_rare` / `price_max` 全部从配置读取
-- [ ] 单调性：epk 越小价格越高
-- [ ] 边界：epk ≥ cheap 时价格 = 1；epk ≤ rare 时价格 = price_max
+- [x] T-PRICE-002.1: 对数曲线纯逻辑：epk→绿宝石价（零依赖 L1）
+- [x] T-PRICE-002.2: 定价锚点接配置：epk_cheap/epk_rare/price_max 从配置读取
 
 ## 技术要点
 

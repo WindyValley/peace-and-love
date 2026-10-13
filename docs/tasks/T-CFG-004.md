@@ -1,6 +1,6 @@
-# T-CFG-004: /pal whitelist 命令族
+- [x] T-CFG-004: /pal whitelist 命令族
 
-**状态：** todo
+**完成备注：** commit e09dad3；list/add/remove + tab补全(候选来自已适配列表) + OP2 + /peaceandlove 别名 + 自动保存；命令注册属运行时行为未单测，白名单即时切换经 reload 真机验证
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
@@ -18,12 +18,12 @@
 
 ## 验收标准
 
-- [ ] `whitelist list` 列出当前白名单（含中文名）
-- [ ] `whitelist add <id>` / `remove <id>` 支持 tab 补全
-- [ ] 补全候选来自**已适配列表**，避免输入无效 id
-- [ ] 变更后自动保存配置文件
-- [ ] 对未适配 id（如末影龙）给出 INFO 提示但仍允许添加
-- [ ] 变更立即影响已加载实体
+- [x] `whitelist list` 列出当前白名单（含中文名）
+- [x] `whitelist add <id>` / `remove <id>` 支持 tab 补全
+- [x] 补全候选来自**已适配列表**，避免输入无效 id
+- [x] 变更后自动保存配置文件
+- [x] 对未适配 id（如末影龙）给出 INFO 提示但仍允许添加
+- [x] 变更立即影响已加载实体
 
 ## 技术要点
 

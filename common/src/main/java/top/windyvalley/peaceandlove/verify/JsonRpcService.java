@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.anger.AngerController;
+import top.windyvalley.peaceandlove.trade.RestockManager;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -163,6 +164,8 @@ public final class JsonRpcService {
             case "server.status" -> serverStatus();
             case "verify.retaliation" -> verifyRetaliation(params);
             case "mob.anger" -> mobAnger(params);
+            case "pricing.scan" -> pricingScan();
+            case "trade.probe" -> tradeProbe(params);
             default -> throw new IllegalArgumentException("未知方法: " + method);
         };
     }
@@ -294,6 +297,41 @@ public final class JsonRpcService {
         return sb.toString();
     }
 
+    /**
+     * T-PRICE-001 真机探针：用数据包加载后的运行时战利品表扫描全部适配生物，
+     * 返回每条掉落的 epk/countMax，供离线比对 spike 黄金基线 final_pricing_128.json。
+     *
+     * <p>必须走真机（而非单测 codec 解析）：enchanted_count_increase 等条件的
+     * codec 依赖动态注册表 enchantment，纯 Bootstrap 单测构造不出 RegistryAccess；
+     * 服务端 reloadableRegistries 已含全部数据包注册表，是唯一权威来源。
+     */
+    private Object pricingScan() {
+        var registries = server.reloadableRegistries();
+        top.windyvalley.peaceandlove.pricing.LootTableScanner scanner =
+                new top.windyvalley.peaceandlove.pricing.LootTableScanner();
+        top.windyvalley.peaceandlove.pricing.LootTableScanner.ScanResult result =
+                scanner.scan(top.windyvalley.peaceandlove.scope.AdaptedMobs.ALL,
+                        type -> registries.getLootTable(type.getDefaultLootTable()));
+
+        java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (top.windyvalley.peaceandlove.pricing.LootTableScanner.DropEntry e : result.entries()) {
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("entity", e.entityId().getPath());
+            row.put("item", e.itemId().getPath());
+            row.put("epk", e.epk());
+            row.put("count_max", e.countMax());
+            row.put("approximated", e.approximated());
+            rows.add(row);
+        }
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("scanned", top.windyvalley.peaceandlove.scope.AdaptedMobs.count());
+        out.put("entries", result.entries().size());
+        out.put("elapsed_ms", result.elapsedMillis());
+        out.put("warnings", result.warnings());
+        out.put("rows", rows);
+        return out;
+    }
+
     private String serverStatus() {
         return String.format("服务器在线，玩家数 %d，TPS 正常",
                 server.getPlayerList().getPlayerCount());
@@ -377,6 +415,118 @@ public final class JsonRpcService {
         });
         try {
             return future.get(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return "错误: 主线程查询超时: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 交易链路探针（T-TRADE-003 真机定位）：读服务端一只命名怪的交易就绪状态。
+     *
+     * <p>params: {"name":"ttest","open":false}。返回结构化串：
+     * merchant=实例是否实现了注入的 Merchant 接口；canTrade=门控；
+     * angry=AngerController.isAngry；offers=getOffers().size()；
+     * open=true 时额外直接调 setTradingPlayer+openTradingScreen（绕过 mobInteract
+     * 注入，二分定位「是注入没触发」还是「开菜单本身失败」），回 openResult。
+     */
+    private String tradeProbe(JsonObject params) {
+        if (server == null) {
+            return "错误: 服务端未就绪";
+        }
+        if (!params.has("name")) {
+            return "错误: 缺少 name 参数";
+        }
+        String name = params.get("name").getAsString();
+        boolean doOpen = params.has("open") && params.get("open").getAsBoolean();
+        java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
+        server.execute(() -> {
+            try {
+                Mob found = null;
+                for (ServerLevel level : server.getAllLevels()) {
+                    for (Entity e : level.getAllEntities()) {
+                        if (e instanceof Mob mob && name.equals(mob.getName().getString())) {
+                            found = mob;
+                            break;
+                        }
+                    }
+                    if (found != null) {
+                        break;
+                    }
+                }
+                if (found == null) {
+                    future.complete("错误: 找不到名为 " + name + " 的生物");
+                    return;
+                }
+                var cfg = PeaceAndLove.config().get();
+                boolean merchant = found instanceof net.minecraft.world.item.trading.Merchant;
+                boolean canTrade = top.windyvalley.peaceandlove.scope.NeutralizationScope
+                        .canTrade(found.getType(), cfg);
+                boolean angry = AngerController.isAngry(found);
+                StringBuilder sb = new StringBuilder();
+                sb.append("merchant=").append(merchant)
+                        .append(";canTrade=").append(canTrade)
+                        .append(";angry=").append(angry)
+                        .append(";alive=").append(found.isAlive())
+                        .append(";noai=").append(found.isNoAi());
+                int n = -1;
+                if (merchant) {
+                    try {
+                        net.minecraft.world.item.trading.Merchant m =
+                                (net.minecraft.world.item.trading.Merchant) found;
+                        net.minecraft.world.item.trading.MerchantOffers offers = m.getOffers();
+                        n = offers.size();
+                        // T-TRADE-004：stock="out" 置满全部报价（模拟买光，成交链路在 005）。
+                        String stockAction = params.has("stock") ? params.get("stock").getAsString() : "";
+                        if ("out".equals(stockAction)) {
+                            for (var o : offers) {
+                                o.setToOutOfStock();
+                            }
+                        }
+                        // 回读每条 uses/maxUses/out 与世界时钟，供补货/持久化真机判定。
+                        StringBuilder uses = new StringBuilder();
+                        int idx = 0;
+                        for (var o : offers) {
+                            if (idx > 0) {
+                                uses.append(",");
+                            }
+                            uses.append(o.getUses()).append("/").append(o.getMaxUses())
+                                    .append(o.isOutOfStock() ? "X" : "");
+                            idx++;
+                        }
+                        sb.append(";uses=").append(uses);
+                        sb.append(";gameTime=").append(found.level().getGameTime());
+                        sb.append(";dayTime=").append(found.level().getDayTime());
+                        sb.append(";day=").append(found.level().getDayTime()
+                                / RestockManager.DAY_TICKS);
+                    } catch (Exception ex) {
+                        sb.append(";offersError=").append(ex.getClass().getSimpleName());
+                    }
+                }
+                sb.append(";offers=").append(n);
+                if (doOpen && merchant) {
+                    try {
+                        ServerPlayer sp = getFirstPlayer();
+                        if (sp == null) {
+                            sb.append(";openResult=no_player");
+                        } else {
+                            net.minecraft.world.item.trading.Merchant m =
+                                    (net.minecraft.world.item.trading.Merchant) found;
+                            m.setTradingPlayer(sp);
+                            m.openTradingScreen(sp, found.getDisplayName(), 0);
+                            sb.append(";openResult=invoked");
+                        }
+                    } catch (Exception ex) {
+                        sb.append(";openResult=EX:").append(ex.getClass().getSimpleName())
+                                .append(":").append(ex.getMessage());
+                    }
+                }
+                future.complete(sb.toString());
+            } catch (Exception ex) {
+                future.complete("错误: 查询异常: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            }
+        });
+        try {
+            return future.get(3, java.util.concurrent.TimeUnit.SECONDS);
         } catch (Exception e) {
             return "错误: 主线程查询超时: " + e.getMessage();
         }

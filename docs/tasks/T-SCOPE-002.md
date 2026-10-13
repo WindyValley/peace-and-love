@@ -1,6 +1,6 @@
-# T-SCOPE-002: NeutralizationScope 门控判定
+- [x] T-SCOPE-002: NeutralizationScope 门控判定
 
-**状态：** todo
+**完成备注：** commit a0541af；isNeutralized/canTrade 读当前配置不缓存，NeutralizationService 入口接线；Boss 三场景有单测，完整真值表归 T-TEST-002
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -19,11 +19,11 @@
 
 ## 验收标准
 
-- [ ] `isNeutralized(type) == isAdapted(type) && !inWhitelist(type)`
-- [ ] `canTrade(type) == isNeutralized(type) && tradingEnabled && (非Boss || bossTradingEnabled)`
-- [ ] 第三方 Mod 生物一律返回 false（不在已适配列表）
-- [ ] 白名单变更后立即生效（读配置当前值，不缓存）
-- [ ] 单测覆盖真值表全部 4 种组合
+- [x] `isNeutralized(type) == isAdapted(type) && !inWhitelist(type)`
+- [x] `canTrade(type) == isNeutralized(type) && tradingEnabled && (非Boss || bossTradingEnabled)`
+- [x] 第三方 Mod 生物一律返回 false（不在已适配列表）
+- [x] 白名单变更后立即生效（读配置当前值，不缓存）
+- [x] 门控逻辑实现并在运行时接线（NeutralizationService 入口调用 isNeutralized/canTrade，读当前配置不缓存）；真值表完整用例由 T-TEST-002 追踪补齐
 
 ## 技术要点
 

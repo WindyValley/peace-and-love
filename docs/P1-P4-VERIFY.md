@@ -11,7 +11,7 @@
 | # | 验证项 | 结论 | 证据 |
 |---|--------|------|------|
 | **P1** | NeoForge 接口注入是否需 AT | ✅ **不需要** | 服务端实测 `Merchant.isAssignableFrom(Mob.class) = true`，accesswidener 为空 |
-| **P2** | 客户端不装模组能否交易 | ⚠️ **未完成** | 需双端联机实测，见文末 |
+| **P2** | 客户端不装模组能否交易 | ✅ **能**（2026-10-12 真机） | 零 PAL 类的 mc-client-rpc 客户端连 PAL 服务端，右键开原版 GUI、报价同步，8/8 PASS，见 §P2 |
 | **P3** | 注入 Mob 基类 vs 38 个目标类 | ✅ **维持基类方案** | 影响面 82 concrete，额外 44 个，内存开销可忽略 |
 | **P4** | `NeutralMob` 冲突 | ✅ **无冲突**（原假设被推翻） | 全 jar 扫描，真实交集为末影人 + 僵尸猪灵 |
 
@@ -157,23 +157,30 @@ ZombifiedPiglin  僵尸猪灵      ★ 在适配列表
 
 ---
 
-## P2 —— 客户端不装模组能否交易 ⚠️ 未完成
+## P2 —— 客户端不装模组能否交易 ✅ 已真机验证（2026-10-12，T-TRADE-003）
 
-### 为何未完成
+### 结论
 
-需要「原版客户端 + 装模组的服务端」联机实测，涉及启动两个进程并手动右键生物，本轮未执行。
+**成立。** 客户端不含 peace-and-love 任何业务类，连装了 PAL 的 NeoForge 服务端，右键适配生物照常打开原版交易 GUI、报价正常同步，八个门控用例全过（含监守者 boss 门控、仇恨、持物、白名单、未适配牛）。
 
-### 理论依据（已有间接证据）
+### 验证方式与边界（措辞严谨）
 
-`Merchant.openTradingScreen(Player, Component, int)` 是 **default 方法**，内部走原版 `MerchantMenu` + `ClientboundMerchantOffersPacket`。这条链路**全部是原版已有的网络协议**，客户端不需要任何模组代码即可解析。
+- 客户端从**独立工程 `mc-client-rpc` 的 `:neoforge:runClient`** 启动（1.21.1 / NeoForge 21.1.250），其 runtime classpath 只有 mc-client-rpc 自身（一个仅开 JSON-RPC 测试端口、**不注册任何游戏内容/网络包/交易逻辑**的自动化驱动 mod）+ architectury，`run/mods` 为空，**零 peaceandlove 类**。
+- 服务端是 192.0.2.10 装最新 PAL jar（verify 开关）的 dedicated server。
+- 右键经真实 `MultiPlayerGameMode.interact` 发 INTERACT 包；开屏完全由服务端 `openTradingScreen` 的 openMenu + `ClientboundMerchantOffersPacket` 驱动，`MerchantScreen` 由原版类构建。脚本 `tests/automation/verify_trade_interaction.py`，8/8 PASS（日志 `pal_trade_p2.log`）。
+- **边界**：这不是「官方启动器零 mod 纯原版客户端」——它带了 mc-client-rpc 这个测试驱动 mod。但该 mod 不参与握手/注册表/交易任何一环，P2 命题（玩家客户端不装 PAL 即可交易）据此成立。协议层 `MerchantMenu` + MerchantOffers 包全原版，与早期理论依据一致。
 
-因此 P2 **大概率成立**，但**尚未实测，不应写进宣传材料**。
+### 早期理论依据（现已被实测证实）
 
-### 建议验证方式
+`Merchant.openTradingScreen(Player, Component, int)` 是 **default 方法**，内部走原版 `MerchantMenu` + `ClientboundMerchantOffersPacket`。这条链路全部是原版已有的网络协议，客户端不需要任何 PAL 代码即可解析。
+
+### 复现方式
 
 ```bash
-./gradlew :neoforge:runServer        # 装模组的服务端
-# 另开原版 1.21.1 客户端，连 localhost，右键一只僵尸
+# 服务端：装 PAL 的 NeoForge（192.0.2.10）
+# 客户端：从 mc-client-rpc 工程起，而非 peace-and-love
+cd D:\Coding\projects\mc-client-rpc && ./gradlew :neoforge:runClient
+# 进服后空手右键中立僵尸 → 应直接打开原版交易界面
 ```
 
 ---
@@ -212,5 +219,5 @@ ZombifiedPiglin  僵尸猪灵      ★ 在适配列表
 
 ## 遗留
 
-- **P2 未实测** —— 建议在 dev 阶段第一个里程碑处补验
+- **P2 已真机闭环**（2026-10-12）——零 PAL 类客户端连 PAL 服务端交易 8/8 通过，见 §P2
 - 探针工程 `spikes/p1-p3-probe/` 可直接演进为正式工程骨架（Gradle 配置已验证可用）

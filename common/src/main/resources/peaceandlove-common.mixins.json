@@ -9,7 +9,16 @@
     "HurtByTargetGoalAccessor",
     "HurtByTargetGoalMixin",
     "LivingEntityHurtMixin",
-    "BrainMixin"
+    "BrainMixin",
+    "MobMerchantMixin",
+    "LootTableAccessor",
+    "LootPoolAccessor",
+    "LootEntryAccessor",
+    "LootSingletonAccessor",
+    "LootItemEntryAccessor",
+    "SetItemCountAccessor",
+    "LootEnchantedBonusAccessor",
+    "LootCompositeConditionAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

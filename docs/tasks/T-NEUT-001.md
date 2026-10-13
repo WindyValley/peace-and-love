@@ -1,6 +1,6 @@
-# T-NEUT-001: NeutralizeStrategy 接口与 GoalSnapshot
+- [x] T-NEUT-001: NeutralizeStrategy 接口与 GoalSnapshot
 
-**状态：** todo
+**完成备注：** commit 42a0a7f；NeutralizationStrategy 接口（卡初名 NeutralizeStrategy，落地改名）+ GoalSnapshot + StrategyRegistry，GoalSnapshotAndRegistryTest 覆盖
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -18,10 +18,10 @@
 
 ## 验收标准
 
-- [ ] `NeutralizeStrategy` 含 `neutralize(Mob)` / `restore(Mob)` / `supports(EntityType)`
-- [ ] `GoalSnapshot` 记录被移除 Goal 的 `priority` + `Goal` 实例
-- [ ] 快照可原样恢复到 `GoalSelector`
-- [ ] 策略注册表按 EntityType 分派
+- [x] `NeutralizationStrategy`（任务卡初名 NeutralizeStrategy，落地改名）含 `neutralize(Mob)` / `restore(Mob)` / `supports(EntityType)`
+- [x] `GoalSnapshot` 记录被移除 Goal 的 `priority` + `Goal` 实例
+- [x] 快照可原样恢复到 `GoalSelector`
+- [x] 策略注册表按 EntityType 分派
 
 ## 技术要点
 

@@ -1,6 +1,6 @@
-# T-TRADE-001: MobMerchantMixin 注入 Merchant 接口
+- [x] T-TRADE-001: MobMerchantMixin 注入 Merchant 接口
 
-**状态：** todo
+**完成备注：** 单测/编译；双端运行时待 T-TRADE-002 有真实报价后一并真机验证，方法集与 P1 探针一致，探针已双端验证
 **优先级：** P0
 **预估：** 5h
 **Owner：** agent

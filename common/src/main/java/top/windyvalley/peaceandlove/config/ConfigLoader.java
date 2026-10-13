@@ -127,8 +127,8 @@ public final class ConfigLoader {
                 def.boss_trading_enabled());
         int max_uses_per_day = readInt(root, merged, "max_uses_per_day",
                 def.max_uses_per_day(), 1, 64);
-        int restock_interval_days = readInt(root, merged, "restock_interval_days",
-                def.restock_interval_days(), 1, 100);
+        double restock_interval_days = readDouble(root, merged, "restock_interval_days",
+                def.restock_interval_days(), 0.01, 100.0);
 
         int price_max = readInt(root, merged, "price_max",
                 def.price_max(), 1, PRICE_MAX_LIMIT);
@@ -136,6 +136,18 @@ public final class ConfigLoader {
                 def.epk_cheap(), 0.0001, 100.0);
         double epk_rare = readDouble(root, merged, "epk_rare",
                 def.epk_rare(), 0.000001, 100.0);
+        // 交叉校验：两个锚点除各自范围外，还必须满足 cheap > rare（对数曲线的前提）。
+        // 二者关系非法时整条曲线无定义，回退默认锚点而不是放进一份会让定价在交易时
+        // 才炸的配置（呼应 T-CFG-003「畸形配置不生效/失败保留可用配置」）。
+        if (!(epk_cheap > 0d && epk_rare > 0d) || epk_cheap <= epk_rare) {
+            LOGGER.warn("定价锚点非法：要求 epk_cheap > epk_rare > 0，当前 epk_cheap={}、epk_rare={}；回退默认 {} / {}",
+                    epk_cheap, epk_rare, def.epk_cheap(), def.epk_rare());
+            epk_cheap = def.epk_cheap();
+            epk_rare = def.epk_rare();
+            merged.addProperty("epk_cheap", epk_cheap);
+            merged.addProperty("epk_rare", epk_rare);
+            dirty = true;
+        }
 
         Map<String, Integer> price_overrides = readOverrides(root, merged, def, dirty);
 

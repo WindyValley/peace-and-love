@@ -1,6 +1,6 @@
-# T-SETUP-004: GitHub Actions 双端构建 CI
+- [x] T-SETUP-004: GitHub Actions 双端构建 CI
 
-**状态：** todo
+**完成备注：** .github/workflows/build.yml（JDK21 temurin+Gradle 缓存+artifact）；gh run list 显示 build 多次 success（最近 v0.0.2）
 **优先级：** P1
 **预估：** 3h
 **Owner：** agent
@@ -17,11 +17,11 @@
 
 ## 验收标准
 
-- [ ] `.github/workflows/build.yml` 存在
-- [ ] JDK 21 (temurin)，Gradle 缓存启用
-- [ ] `./gradlew build` 双端通过
-- [ ] 产物上传为 artifact
-- [ ] CI 在 GitHub 上实际跑绿一次
+- [x] `.github/workflows/build.yml` 存在
+- [x] JDK 21 (temurin)，Gradle 缓存启用
+- [x] `./gradlew build` 双端通过
+- [x] 产物上传为 artifact
+- [x] CI 在 GitHub 上实际跑绿一次
 
 ## 技术要点
 

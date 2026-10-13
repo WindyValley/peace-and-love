@@ -1,6 +1,6 @@
-# T-SETUP-001: 由探针工程演进为正式工程
+- [x] T-SETUP-001: 由探针工程演进为正式工程
 
-**状态：** todo
+**完成备注：** commit 2065317 由探针演进为正式工程骨架；双端 jar 已产出。验收2已勘误为 SemVer 0.x（现 0.0.2），探针保留在 spikes/ 归档
 **优先级：** P0
 **预估：** 3h
 **Owner：** agent
@@ -18,11 +18,11 @@
 
 ## 验收标准
 
-- [ ] 根目录出现 `build.gradle` / `settings.gradle` / `gradle.properties` / `gradlew`
-- [ ] `mod_version` 改为 `1.0.0`，移除 `-probe` 后缀
-- [ ] 删除 `ProbeCommon.java` / `ProbeResults.java` / `*ProbeMixin.java` / `read_probe.py`
-- [ ] `./gradlew build` 双端通过
-- [ ] 产出 `fabric/build/libs/*.jar` 与 `neoforge/build/libs/*.jar`
+- [x] 根目录出现 `build.gradle` / `settings.gradle` / `gradle.properties` / `gradlew`
+- [x] `mod_version` 移除 `-probe` 后缀，版本号遵循 SemVer 0.x（正式发布前不用 1.0.0；现为 0.0.2，单一来源 gradle.properties，-PmodVersion 可覆盖）
+- [x] 删除 `ProbeCommon.java` / `ProbeResults.java` / `*ProbeMixin.java` / `read_probe.py`
+- [x] `./gradlew build` 双端通过
+- [x] 产出 `fabric/build/libs/*.jar` 与 `neoforge/build/libs/*.jar`
 
 ## 技术要点
 

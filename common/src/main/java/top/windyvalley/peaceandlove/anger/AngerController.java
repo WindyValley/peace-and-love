@@ -109,6 +109,33 @@ public final class AngerController {
         setAngerSource(mob, AngerSource.NONE);
     }
 
+    // ── 仇恨状态查询（供右键交易门控/调试判定）────────────────────────
+
+    /**
+     * 该生物当前是否处于对玩家的仇恨状态（T-TRADE-003 右键门控用）。
+     *
+     * <p>三条仇恨路径任一成立即算愤怒，覆盖本 mod 与原版各自维护的状态：
+     * <ol>
+     *   <li>mod 自管的仇恨来源非 NONE（PLAYER_DIRECT/KIN_ALERT，Goal 与 Brain 系都写）；</li>
+     *   <li>原版 {@link NeutralMob} 的持久愤怒计时仍在（含末影人被凝视等
+     *       非「玩家攻击」触发的原版愤怒，这种不该能交易）；</li>
+     *   <li>Brain 系记忆里仍有 ATTACK_TARGET（被示警写入，可能比 mod 计时更早/更晚清）。</li>
+     * </ol>
+     *
+     * <p>判定只读，不改变任何状态；{@code hasMemoryValue} 对未注册该记忆的
+     * Goal 系生物安全返回 false，不抛异常。
+     */
+    public static boolean isAngry(Mob mob) {
+        if (angerSourceOf(mob) != AngerSource.NONE) {
+            return true;
+        }
+        if (mob instanceof NeutralMob neutral && neutral.isAngry()) {
+            return true;
+        }
+        return AdaptedMobs.BRAIN_BASED.contains(mob.getType())
+                && mob.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET);
+    }
+
     /** Brain 同族示警路径调用：记下最后攻击玩家（与直接受击路径一致）。 */
     public static void rememberLastAttacker(Mob mob, Player attacker) {
         lastAttackerByMob.put(mob.getUUID(), attacker.getUUID());

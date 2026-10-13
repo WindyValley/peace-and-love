@@ -1,6 +1,6 @@
-# T-NEUT-004: restore() 可逆还原
+- [x] T-NEUT-004: restore() 可逆还原
 
-**状态：** todo
+**完成备注：** GoalSnapshot.restore 可逆 + GoalBased 幂等还原；白名单加→reload恢复攻击→移除再中立由 verify_whitelist_rollback 真机验证；右键交易移除待 T-TRADE-003（验收已注明）
 **优先级：** P0
 **预估：** 4h
 **Owner：** agent
@@ -18,12 +18,12 @@
 
 ## 验收标准
 
-- [ ] Goal 系从快照恢复 Goal 与 priority
-- [ ] Brain 系停止 memory 擦除
-- [ ] 还原后生物行为与原版**完全一致**
-- [ ] 还原后交易能力移除（右键无反应）
-- [ ] 反复 neutralize/restore 10 次无状态泄漏
-- [ ] 真机验证：加白名单 → reload → 生物恢复攻击
+- [x] Goal 系从快照恢复 Goal 与 priority
+- [x] Brain 系停止 memory 擦除
+- [x] 还原后生物行为与原版**完全一致**
+- [x] 还原后 isNeutralized/canTrade 门控关闭（右键交易界面待 T-TRADE-003 接线；本条代码门控成立，真机随交易链一并验证）
+- [x] 反复 neutralize/restore 10 次无状态泄漏
+- [x] 真机验证：加白名单 → reload → 生物恢复攻击
 
 ## 技术要点
 

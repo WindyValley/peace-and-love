@@ -37,10 +37,25 @@ public final class BuildFlags {
 
 // 把【生成任务】本身挂为源码目录（不是裸目录）：Gradle 会给所有用到该
 // 源集的任务（compileJava、sourcesJar 等）自动推断任务依赖，避免漏声明。
+// ── 黄金基准数据（T-TEST-001）：spike 产出的 final_pricing_128.json 拷进测试资源 ──
+// 单一真相留在 spikes/；这里只在 processTestResources 时复制，不复制进源码树。
+def goldenPricing = layout.buildDirectory.dir("generated/test-golden")
+def copyGoldenPricing = tasks.register("copyGoldenPricing", Copy) {
+    from("${rootDir}/spikes/design-verify/final_pricing_128.json")
+    into(goldenPricing.map { it.dir("golden") })
+}
+
 sourceSets {
     main {
         java.srcDir(generateBuildFlags)
     }
+    test {
+        resources.srcDir(goldenPricing)
+    }
+}
+
+tasks.named("processTestResources") {
+    dependsOn(copyGoldenPricing)
 }
 
 dependencies {
