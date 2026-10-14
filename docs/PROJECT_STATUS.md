@@ -14,7 +14,10 @@
 
 ## 当前阶段（2026-10-14 更新）：特殊适配 NEUT-005/006/007 全部真机闭环，三卡 done（待分批 commit）
 
-**分支**：`feat/special-mobs-neut-005-007`（未合 main、未开 PR）。代码 + common 单测 + **真机全部闭环**，NEUT-005/006/007 三张卡置 **done**。叶子任务进度 **39/44（89%）**，剩余 5 张全是发布域 REL-001~005。common 单测 **203 全绿（0 skip）**——三处均运行时 Mixin/Goal 行为（纯 JUnit 造不出真实 Mob），验证归真机，未新增单测。
+**分支**：`feat/special-mobs-neut-005-007`（**已推 origin**，未开 PR、未合 main）。代码 + common 单测 + **NeoForge/Fabric 双端真机**全部闭环，NEUT-005/006/007 三张卡置 **done**。叶子任务进度 **39/44（89%）**，剩余 5 张全是发布域 REL-001~005。common 单测 **203 全绿（0 skip）**——三处均运行时 Mixin/Goal 行为（纯 JUnit 造不出真实 Mob），验证归真机，未新增单测。
+
+**Fabric 端回归（2026-10-14，同表 6 用例在 Fabric 独立服 `~/minecraft-fabric` 25566/RCON 25576 全绿）**：Fabric 服装 PAL 0.0.3（带探针，`-Dpal.verifyRpcPort=25587` 错开 NeoForge 主服 25585）；mc-client-rpc `:fabric:runClient` 客户端从 loom classpath 连入；`tests/automation/verify_fabric_neut_all.py` import NeoForge 同一套脚本、只注入 RCON/探针/配置三通道（业务零改动）。幻翼（放宽俯冲观察窗 10→18s 后 20→18.3 反击掉血）、凋灵（placeBlock 真实图案召唤+侧头拦+主头反击）、僵尸猪灵（4 格 KIN_ALERT/9 格不动）、末影人（凝视不激怒+反击）、监守者（尖啸体真实 STEP 召唤+BrainAttackGate+反击 20→0）、6 种白名单回归全 PASS。验完 Fabric 服 `stop`、客户端 `quit`，NeoForge 主服 25565/25575/25585 全程无恙。
+> Fabric 监守者召唤手法实证（已回写共用脚本）：周期性 `tp` 掉头是服务端瞬移、不产生 STEP 游戏事件，会把连续步行振动打断致 warning 永久卡死；`player.look` 瞬时转 180° 又触发移动去同步把玩家橡皮筋拉停。正解=W 一次按住、yaw 每 0.2s 平滑 +24° 绕尖啸体半径约 3 格走圈（约 2s 一圈），零 tp 零急转。另：玩家 WardenSpawnTracker 无法用 `data merge` 清零（只读 SynchedEntityData，单级衰减 600s），Fabric 那次末段 warn 直接映到 4 是调试残留计数所致，但召唤确走真实尖啸体 tryWarn 路径、门控 A/B 全绿；干净 0→4 已在 NeoForge 实证。
 
 ### 真机验证结果（2026-10-14，98 服 NeoForge + mc-client-rpc 真实按键客户端）
 
@@ -46,7 +49,8 @@
 
 - [x] 幻翼/凋灵/僵尸猪灵/末影人/监守者 + 6 种回归全部真机通过（见上表）。
 - [x] 白名单 6 项（pillager/vindicator/evoker/vex/phantom/shulker）验前临时 remove、验完 add 回（回归脚本 finally 自动还原，已核对生效）。
-- [ ] **分批 commit**（用户偏好）：NEUT-005 / 006 / 007 三批，中文 message 写根因/修法/副作用；mc-client-rpc 的 `placeBlock` 在独立仓单独提交。本批不含发布动作。
+- [x] **分批 commit + 推送**：PAL 分 6 批（NEUT-005/006/007 三个特性 + 文档 + 探针端口可配 + Fabric runner/时序修正）在 `feat/special-mobs-neut-005-007`，**已推 origin**（未开 PR、未合 main）；mc-client-rpc 的 `placeBlock` 已提交并推 main。本批不含发布动作。
+- [x] **NeoForge + Fabric 双端真机全绿**（Fabric 见上文，同一套脚本注入三通道）。
 
 ---
 
