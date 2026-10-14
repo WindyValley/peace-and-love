@@ -8,7 +8,45 @@
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
 
-- **最后更新**：2026-10-13
+- **最后更新**：2026-10-14
+
+---
+
+## 当前阶段（2026-10-14 更新）：特殊适配 NEUT-005/006/007 全部真机闭环，三卡 done（待分批 commit）
+
+**分支**：`feat/special-mobs-neut-005-007`（未合 main、未开 PR）。代码 + common 单测 + **真机全部闭环**，NEUT-005/006/007 三张卡置 **done**。叶子任务进度 **39/44（89%）**，剩余 5 张全是发布域 REL-001~005。common 单测 **203 全绿（0 skip）**——三处均运行时 Mixin/Goal 行为（纯 JUnit 造不出真实 Mob），验证归真机，未新增单测。
+
+### 真机验证结果（2026-10-14，98 服 NeoForge + mc-client-rpc 真实按键客户端）
+
+| 生物（脚本） | A 不主动 | B 玩家打后 | 备注 |
+|------|------|-----------|------|
+| **幻翼** `verify_neut005_phantom.py` | 移出白名单后自由飞 14s 不俯冲/不掉血/NONE | PLAYER_DIRECT + 俯冲反击 20→18.8 | 白名单已还原 |
+| **凋灵** `verify_neut006_wither.py` | 玩家站侧头索敌盒内 24s 不掉血/NONE | PLAYER_DIRECT + 主头反击掉血 | **placeBlock 亲手放骷髅头走真实 checkSpawn 图案召唤**；骑头鸡在出生爆炸中被炸死（爆炸保留）；侧头锁定+idle 乱射全拦 |
+| **僵尸猪灵** `verify_neut007_piglin.py` | — | 3 只 4 格内 KIN_ALERT/target=player，3 只 9 格外全 NONE/none | 一次坐实球形 4 格单层、无 35 格二次传染/链式 |
+| **末影人** `verify_neut007_enderman.py` | 凝视不激怒；白名单同几何 target=player（强对照） | PLAYER_DIRECT，转开视线解冻结后近战反击 20→13 | 凝视冻结=原版 `EndermanFreezeWhenLookedAt`，非 mod |
+| **监守者** `verify_neut006_warden.py` | 自然召唤后贴近 0 攻击 8s，HP 20→20/NONE/none | 命中 dist 2.2、500→499、PLAYER_DIRECT，反击 20→0 | 本轮零代码，回归确认 BrainAttackGate 仍拦 Sonic Boom/近战 |
+| **回归 6 种** `verify_neut005_regression.py` | shulker/Johnny/vindicator/pillager/evoker/vex 全 NONE/none | 全 PLAYER_DIRECT + target=player | 谓词收窄唯一广面改动，确认无误伤；白名单已还原 |
+
+**真机方法学要点（踩坑实证）**：
+- **凋灵图案**用新增 `placeBlock` 原语（mc-client-rpc，走真实 `gameMode.useItemOn` 触发服务端 `setPlacedBy`/`checkSpawn`），不用裸 `/summon`（无出生图案爆炸）；出生爆炸只能由 Invul 倒计时驱动。
+- **监守者不能 `/summon`**（5s 钻地自灭，NoAI 也挡）：铺三层厚板逼其在站立层钻出（一层薄板会让它钻到 y-4 板下、玩家摔落），放 `sculk_shrieker[can_summon=true]` blockstate（NBT 写法静默失效），玩家键映射 STEP 在尖啸体 ±3.5 格内直线来回走（4.5 格/s，画圈贴墙无位移不触发），尖啸体 warning 1→4 自然召唤；`warning_level` 要读完整 block NBT。自然召唤的监守者无 CustomName，探针按 name 找不到，钻出结束后需 `data merge` 命名并回读确认。
+- 攻击失败先排**测试环境污染**：抗性 255 没清会免掉反击伤害（末影人假失败根因）；玩家站位/朝向要面向目标（yaw=180 朝北而非 0）；批量回归用抗性 10 保命，反击主判据用 `PLAYER_DIRECT + target=player`，掉血只作旁证。
+
+### 源码实证后的关键结论（推翻任务卡/早期设计的多数假设）
+
+逐条核对 1.21.1 mojmap 源码后，任务卡列的 **10 个「特殊适配」担心点里只有 3 个是真缺口**，其余 7 个早已被通用 `GoalBasedStrategy` 覆盖。**没有建早期规划的 8 个独立 Adapter 类**，落地为「1 处谓词收窄 + 2 个精准 Mixin」。详见 `02-design.md §3.5.1`、`adr/004` 实证修订。
+
+- **真缺口（本次新增代码）**：
+  1. **幻翼（NEUT-005）**：索敌器 `PhantomAttackPlayerTargetGoal extends Goal`（裸 Goal，非 TargetGoal）在 targetSelector 主动 setTarget，旧谓词 `instanceof TargetGoal` 漏网 → 谓词改为「targetSelector 中除 HurtByTargetGoal 外全删」。顺带删除末影人/僵尸猪灵的 `ResetUniversalAngerTargetGoal`（裸 Goal，携带 ADR-004 禁止的 universal-anger 扩散）。已核对 32 种（含父类继承）targetSelector 注册项确认安全。
+  2. **凋灵侧头（NEUT-006）**：主头索敌其实是标准 NearestAttackableTargetGoal（已删，HurtBy 反击保留）；两个**侧头**在 `customServerAiStep` 硬编码，既有锁定攻击也有 idle 随机乱射，全绕过 targetSelector。`WitherBossMixin` 拦唯一开火出口私有 `performRangedAttack(int head,double,...)`，对 head≥1 且中立化者 cancel（拦 setAlternativeTarget 挡不住 idle 乱射，自查时已纠正拦截点）。召唤爆炸/破坏方块独立路径保留。
+  3. **僵尸猪灵（NEUT-007）**：除受击 HurtBy 链（已由 HurtByTargetGoalMixin 改道 KinAlerter）外，`customServerAiStep` 每 tick 还调私有 `alertOthers()` 按 FOLLOW_RANGE 35 格大范围传染——「双份示警」真正来源。`ZombifiedPiglinMixin` 在中立化且目标为玩家时 cancel；非玩家源保留原版。
+- **实证已覆盖、零新增代码**：潜影贝（ShulkerAttackGoal 是攻击执行器非索敌，原卡措辞有误）、Johnny/掠夺者/卫道士/唤魔者（索敌全是 TargetGoal 子类；袭击寻路 goal 在 goalSelector 保留）、唤魔者召唤（无目标法术 canUse 不成立）、恼鬼（VexCopyOwnerTargetGoal 是 TargetGoal；召唤物经 EntityEvent.ADD 自动中立化）、末影人凝视（EndermanLookForPlayerGoal 是 NearestAttackable 子类）、监守者 Sonic Boom（只认 ATTACK_TARGET，已被 BrainAttackGate 源头拦截，0.0.2 + 本轮真机双验）。
+
+### 待办（commit 前）
+
+- [x] 幻翼/凋灵/僵尸猪灵/末影人/监守者 + 6 种回归全部真机通过（见上表）。
+- [x] 白名单 6 项（pillager/vindicator/evoker/vex/phantom/shulker）验前临时 remove、验完 add 回（回归脚本 finally 自动还原，已核对生效）。
+- [ ] **分批 commit**（用户偏好）：NEUT-005 / 006 / 007 三批，中文 message 写根因/修法/副作用；mc-client-rpc 的 `placeBlock` 在独立仓单独提交。本批不含发布动作。
 
 ---
 

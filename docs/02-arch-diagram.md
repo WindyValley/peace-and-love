@@ -114,19 +114,23 @@ graph TB
         B3["拦截索敌 Behavior"]
     end
 
-    subgraph special["8 个特殊适配"]
-        S1["潜影贝：ShulkerAttackGoal 内嵌索敌"]
-        S2["幻翼：PhantomAttackPlayerTargetGoal"]
-        S3["袭击系 ×3：Raider.canJoinRaid"]
-        S4["恼鬼：owner 生命周期"]
-        S5["凋灵：customServerAiStep 硬编码"]
-        S6["监守者：VibrationSystem + AngerManagement"]
+    subgraph special["特殊适配（源码实证后仅 3 个真缺口）"]
+        S2["幻翼：裸 Goal 索敌器<br/>谓词收窄为「targetSelector 除 HurtBy 外全删」"]
+        S5["凋灵侧头：customServerAiStep 硬编码<br/>WitherBossMixin 拦 setAlternativeTarget(head≥1)"]
+        S7["僵尸猪灵：customServerAiStep 私有 alertOthers<br/>ZombifiedPiglinMixin 拦 35 格大范围传染"]
+    end
+
+    subgraph covered["源码实证已被通用策略覆盖（无额外代码）"]
+        C1["潜影贝/Johnny/袭击系×3/恼鬼：索敌均为 TargetGoal 子类，已删<br/>袭击寻路 goal 在 goalSelector 保留；唤魔者无目标不召唤"]
+        C2["末影人凝视：EndermanLookForPlayerGoal 已删；瞬移/搬方块保留"]
+        C3["监守者 Sonic Boom：ATTACK_TARGET 被 BrainAttackGate 源头拦截"]
     end
 
     Goal --> goalimpl
     Brain --> brainimpl
-    goalimpl -.需额外处理.-> special
-    brainimpl -.需额外处理.-> special
+    goalimpl -.仅 3 处需额外处理.-> special
+    goalimpl -.7 项已覆盖.-> covered
+    brainimpl -.已覆盖.-> covered
 ```
 
 ---

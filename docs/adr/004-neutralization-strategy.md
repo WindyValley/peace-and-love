@@ -110,6 +110,20 @@ Set<WrappedGoal>  getAvailableGoals();               // 可遍历检查
 
 ### 8 个需特殊适配的生物
 
+> **实证修订（2026-10-13，T-NEUT-005/006/007 落地时按 1.21.1 源码逐条复核）：**
+> 下表是 design 阶段的预判；真正逐类读源码后，10 个担心里**只有 3 个是通用策略
+> 覆盖不到的真缺口**，且落地形态不是独立 Adapter，而是「1 处谓词收窄 + 2 个 Mixin」。
+> 完整逐条对照见 `02-design.md §3.5.1`。结论：
+> - **真缺口**：① 幻翼（索敌器是裸 `Goal` 非 `TargetGoal`，旧谓词漏网）；
+>   ② 凋灵**侧头** hardcode（主头索敌其实是标准 TargetGoal 已删）；
+>   ③ 僵尸猪灵 `customServerAiStep` 私有的 35 格 `alertOthers()`。
+> - **预判有误、其实已被通用 GoalBasedStrategy 覆盖**：潜影贝（ShulkerAttackGoal 是
+>   攻击执行器非索敌）、Johnny/三袭击系（索敌都是 TargetGoal 子类；袭击寻路 goal
+>   在 goalSelector 保留）、恼鬼（VexCopyOwnerTargetGoal 是 TargetGoal）、
+>   唤魔者召唤（无目标法术 canUse 不成立）、末影人凝视（EndermanLookForPlayerGoal
+>   是 NearestAttackable 子类）。监守者 Sonic Boom 由 BrainAttackGate 拦 ATTACK_TARGET
+>   已覆盖，零额外代码。
+
 | 生物 | 难点 |
 |------|------|
 | 潜影贝 | 固定在方块上，索敌内嵌于 `ShulkerAttackGoal`，无独立移动 Goal |

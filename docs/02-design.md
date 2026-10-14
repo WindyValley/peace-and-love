@@ -40,25 +40,20 @@ peace-and-love/
 │       │   │   ├── AngerController.java
 │       │   │   ├── AngerSource.java           # enum
 │       │   │   └── KinAlerter.java
-│       │   └── strategy/
+│       │   └── neutralize/
 │       │       ├── NeutralizationStrategy.java
 │       │       ├── GoalBasedStrategy.java
 │       │       ├── BrainBasedStrategy.java
 │       │       ├── GoalSnapshot.java          # 支持 restore()
-│       │       └── special/                   # 10 个特殊适配
-│       │           ├── ShulkerAdapter.java
-│       │           ├── PhantomAdapter.java
-│       │           ├── RaiderAdapter.java     # 掠夺者/卫道士/唤魔者
-│       │           ├── VexAdapter.java
-│       │           ├── WitherAdapter.java
-│       │           ├── WardenAdapter.java
-│       │           ├── EndermanAdapter.java   # P4 新增：禁用凝视激怒
-│       │           └── ZombifiedPiglinAdapter.java  # P4 新增：接管群体报复
+│       │       ├── BrainAttackGate.java       # Brain 攻击记忆写入源头门控
+│       │       └── （无 special/ 子包 —— 见下方「特殊适配实证结论」）
 │       └── resources/
-│           └── peaceandlove.mixins.json
+│           └── peaceandlove-common.mixins.json
 │           └── mixin/
 │               ├── MobMerchantMixin.java      # implements Merchant
 │               ├── LivingEntityHurtMixin.java # 仇恨触发
+│               ├── WitherBossMixin.java       # 凋灵侧头硬编码索敌拦截
+│               ├── ZombifiedPiglinMixin.java  # 僵尸猪灵大范围群体报复拦截
 │               └── LootTableAccessor.java     # ×7 @Accessor
 ├── fabric/
 └── neoforge/
@@ -262,6 +257,47 @@ public class BrainBasedStrategy implements NeutralizationStrategy {
     }
 }
 ```
+
+#### 3.5.1 特殊适配实证结论（T-NEUT-005/006/007，2026-10-13 源码核对 + 实现）
+
+> 本节用 1.21.1 mojmap 源码（`D:/projects/mc-1.21.1-sources`）逐条核对任务卡所列
+> 10 个「特殊适配」，结论是 **10 个担心点里只有 3 个是真缺口，其余 7 个已被通用
+> 策略覆盖**。因此**没有**按早期规划建 8 个独立 Adapter 类（无 special/ 子包），
+> 落地为「1 处谓词收窄 + 2 个精准 Mixin」。
+
+**已被通用 `GoalBasedStrategy` 覆盖的 7 项（无需额外代码）：**
+
+| 担心点 | 源码事实 |
+|--------|----------|
+| 潜影贝 `ShulkerAttackGoal` | 那是 goalSelector 的**攻击执行器**（非索敌），保留；索敌 `ShulkerNearestAttackGoal`/`ShulkerDefenseAttackGoal` 均为 `NearestAttackableTargetGoal` 子类，已删 |
+| Johnny 卫道士 | `VindicatorJohnnyAttackGoal extends NearestAttackableTargetGoal`，主动索敌已删 |
+| 掠夺者/卫道士/唤魔者 | 主动索敌全是 NearestAttackableTargetGoal；`Raider` 基类只注册 PathfindToRaid/庆祝等**移动** goal（在 goalSelector，不在 targetSelector），袭击参与能力原样保留 |
+| 唤魔者不再召唤恼鬼 | `EvokerSummonSpellGoal.canUse()` 要求 `getTarget()!=null`；中立无目标 → 不施法、不召唤 |
+| 恼鬼 | `VexCopyOwnerTargetGoal extends TargetGoal`（复制 owner 目标）已删；唤魔者召唤的恼鬼经 `addFreshEntity` 触发 `EntityEvent.ADD` 自动中立化 |
+| 末影人凝视 | 凝视激怒全封装在 `EndermanLookForPlayerGoal extends NearestAttackableTargetGoal`，已删；瞬移/搬方块/受惊瞬移在 goalSelector 与 setTarget 覆盖里，不受影响 |
+| 监守者 Sonic Boom | 行为入口要求 `ATTACK_TARGET VALUE_PRESENT`，已由 `BrainAttackGate` 源头门控（0.0.2 已真机双向全绿），本次零代码 |
+
+**3 个真缺口与落地：**
+
+1. **幻翼（NEUT-005）** —— `PhantomAttackPlayerTargetGoal extends Goal`（裸 Goal，
+   **非** TargetGoal）注册在 targetSelector 内主动 `setTarget(player)`，旧谓词
+   `instanceof TargetGoal` 漏网。修法：谓词语义改为「targetSelector 中除 HurtByTargetGoal
+   外全删」，把裸 Goal 索敌器也纳入。顺带删除末影人/僵尸猪灵的
+   `ResetUniversalAngerTargetGoal`（裸 Goal，`forgetCurrentTargetAndRefreshUniversalAnger`
+   是 ADR-004 决策三禁止的「对所有玩家记仇」路径）。已核对全部 32 种（含父类继承）
+   targetSelector 注册项，除 HurtBy 外全是主动索敌/群体愤怒，无「非攻击需保留」项。
+2. **凋灵（NEUT-006）** —— 两个侧头（head 1/2）在 `WitherBoss#customServerAiStep()`
+   里硬编码 `getNearbyEntities`→`setAlternativeTarget(i,id)`→`performRangedAttack`，
+   完全绕过 targetSelector；锁定不到时还会按 `idleHeadUpdates` 朝随机坐标乱射。
+   用 `WitherBossMixin` 在 `setAlternativeTarget` HEAD 对 head≥1 且中立化者 cancel：
+   侧头不锁敌、不乱射；主头 0 放行（由 getTarget 镜像，玩家攻击后经保留的
+   HurtByTargetGoal 反击）；召唤爆炸（invulnerableTicks 分支）与飞行破坏方块是
+   独立路径，保持原版。
+3. **僵尸猪灵（NEUT-007）** —— 除受击瞬间的 HurtByTargetGoal.alertOthers（已由
+   HurtByTargetGoalMixin 改道 KinAlerter）外，`customServerAiStep()` 每 tick 还调
+   私有 `alertOthers()` 按 FOLLOW_RANGE（35 格）大范围 `setTarget` 传染，是「双份示警」
+   的真正来源。`ZombifiedPiglinMixin` 在中立化且目标为玩家时 cancel 它，群体报复统一
+   归 KinAlerter（球形 4 格、严格同类、单层不链式）；非玩家源（铁傀儡/怪物内斗）保留原版。
 
 ### 3.6 仇恨控制
 
@@ -706,7 +742,11 @@ player.closeContainer）。
 
 凋灵被中立化后**不会主动攻击玩家**，但玩家攻击它仍会反击（`HurtByTargetGoal` 保留）。管理员若要恢复原版凋灵战，将 `minecraft:wither` 加入白名单即可。
 
-> ⚠️ 需注意：凋灵的 target 选择在 `customServerAiStep` 中另有硬编码，属 8 个特殊适配之一，`WitherAdapter` 需覆盖该路径。
+> ✅ 已落地（2026-10-13，T-NEUT-006）：凋灵主头的索敌是标准 `NearestAttackableTargetGoal`，
+> 已由通用 GoalBasedStrategy 删除（保留 HurtByTargetGoal 反击）。两个**侧头**（head 1/2）
+> 的目标选择确在 `customServerAiStep` 硬编码（不经 targetSelector），由
+> `WitherBossMixin#setAlternativeTarget` 对 head≥1 且中立化者取消写入来覆盖，
+> 详见 §3.5.1。未采用早期设想的独立 `WitherAdapter` 类。
 
 ---
 
