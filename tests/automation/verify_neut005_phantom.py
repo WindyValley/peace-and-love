@@ -181,9 +181,10 @@ def main():
         check("B 攻击命中", hit, detail)
         check("B source=PLAYER_DIRECT", src == "PLAYER_DIRECT", f"source={src} [{raw}]")
 
-        # 松手，让被 setTarget 的幻翼自然俯冲（不再 tp 锚定）
+        # 松手，让被 setTarget 的幻翼自然俯冲（不再 tp 锚定）。
+        # 幻翼受击后要先重新爬升、再进入俯冲轨迹，首轮俯冲常 >10s，留足 18s。
         dropped = False
-        for _ in range(10):
+        for _ in range(18):
             time.sleep(1.0)
             h = hp()
             if h is not None and hp0 is not None and h < hp0 - 0.01:

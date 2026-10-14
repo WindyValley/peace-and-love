@@ -144,28 +144,37 @@ def main():
 
     try:
         # ── 走动 STEP 攒警告，自然召唤 ──────────────
-        log("--- 玩家沿直道来回走动（STEP），攒 warning 1→4，最多 100s ---")
-        # 始终按住 W；在尖啸体 ±3.5 格内每 1.4s 交替 tp 到对侧边界并掉头，
-        # 反复直线穿过尖啸体，全程不离开它的 8 格振动监听盒（4.5 格/s × 1.4s≈6.3 格）。
-        server_rcon(f"tp Dev {CX-3.5} {FY} {CZ+0.5} -90 0")
-        time.sleep(0.4)
+        log("--- 玩家绕尖啸体持续步行（STEP），攒 warning 1→4，最多 170s ---")
+        # 手法（Fabric 实证，踩坑两次）：
+        #  ① 绝不能周期性 tp——tp 是服务端瞬移、不产生 STEP 游戏事件，会把连续
+        #     步行的振动打断，尖啸体只收到最初两三次后 warning 永久卡死（实测 165s 停 2）。
+        #  ② 绝不能 player.look 瞬时转 180° 掉头——急转触发客户端/服务端移动去同步，
+        #     玩家会被橡皮筋拉回并永久停止（实测转身后走 7 格即钉死）。
+        #  正确做法：W 键一直按（一次 player.move），yaw 每 0.2s 平滑 +24°（约 2s 一圈），
+        #  玩家绕半径约 3 格的圆持续走、全程在尖啸体 8 格振动监听盒内，每步都是真实 STEP。
+        #  向东起步、yaw 递增（右转向南）时圆心在起点南侧，故从尖啸体【北侧】起步让圆心落尖啸体。
+        #  玩家侧每次警告有 200t(10s) 冷却，全新世界 0→4 约 40s；tracker 有残留则更快。
+        server_rcon(f"tp Dev {SHX+0.5} {FY} {SHZ-3.5} -90 0")
+        time.sleep(0.5)
         rpc("player.move", {"forward": 1.0, "strafe": 0.0}, timeout=4)
-        heading = 1
-        last_flip = time.time()
+        yaw = -90.0
+        last_turn = time.time()
         t0 = time.time()
         max_warn = -1
+        last_log = 0.0
         spawned = False
-        while time.time() - t0 < 100:
+        while time.time() - t0 < 170:
             now = time.time()
-            if now - last_flip > 1.4:
-                heading *= -1
-                yaw = -90 if heading > 0 else 90
-                edge = CX + 3.5 if heading > 0 else CX - 3.5
-                server_rcon(f"tp Dev {edge} {FY} {CZ+0.5} {yaw} 0")
-                last_flip = now
-            time.sleep(0.5)
+            if now - last_turn > 0.2:
+                yaw += 24.0                       # 平滑右转，W 不放
+                rpc("player.look", {"yaw": yaw, "pitch": 0.0}, timeout=3)
+                last_turn = now
+            time.sleep(0.1)
             w = warning_level()
             max_warn = max(max_warn, w)
+            if now - last_log > 5:
+                log(f"    t={now-t0:4.0f}s warning_level={w}")
+                last_log = now
             if warden_exists():
                 spawned = True
                 log(f"  监守者已自然召唤（最高 warning={max_warn}），停止走动")
