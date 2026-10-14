@@ -4,7 +4,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
-import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.scope.AdaptedMobs;
 import top.windyvalley.peaceandlove.scope.AlertScope;
@@ -41,9 +40,29 @@ import java.util.function.Predicate;
  */
 public final class GoalBasedStrategy implements NeutralizationStrategy {
 
-    /** 要移除的主动索敌 Goal：所有 TargetGoal，但保留 HurtByTargetGoal（受击反击）。 */
+    /**
+     * 要移除的主动索敌 Goal。
+     *
+     * <p>语义是「<b>targetSelector 中除受击反击 {@link HurtByTargetGoal} 外的一切</b>」，
+     * 而不是「所有 {@link TargetGoal} 子类」。原因（1.21.1 源码实证）：
+     * <ul>
+     *   <li><b>幻翼</b>的索敌器 {@code PhantomAttackPlayerTargetGoal} 直接继承裸
+     *       {@link Goal}（不是 TargetGoal），却注册在 targetSelector 里并主动
+     *       {@code setTarget(player)}。若谓词只认 TargetGoal，幻翼中立化后仍会俯冲
+     *       攻击（T-NEUT-005）。</li>
+     *   <li><b>末影人 / 僵尸猪灵</b>的 {@code ResetUniversalAngerTargetGoal} 也是裸
+     *       Goal 子类，其 {@code forgetCurrentTargetAndRefreshUniversalAnger()} 携带
+     *       「对所有玩家记仇」语义，正是 ADR-004 决策三明令禁止的扩散路径，必须删。</li>
+     * </ul>
+     *
+     * <p>安全性：已逐一核对全部 32 种 Goal 系生物（含 Zombie/AbstractSkeleton/Spider/
+     * Slime/Guardian 等父类继承）注册进 targetSelector 的 goal，除 HurtByTargetGoal 外
+     * 全部是主动索敌 / 群体愤怒重置，没有「非攻击但需保留」的目标 goal。
+     * goalSelector 里的攻击执行器（MeleeAttackGoal/ShulkerAttackGoal/俯冲攻击等）
+     * 不在本选择器，一律不动 —— 受击反击仍需要它们。
+     */
     private static final Predicate<Goal> TARGET_GOAL_TO_REMOVE =
-            g -> g instanceof TargetGoal && !(g instanceof HurtByTargetGoal);
+            g -> !(g instanceof HurtByTargetGoal);
 
     /** 被移除 Goal 的快照：UUID → 快照列表。 */
     private final Map<UUID, List<GoalSnapshot>> removedSnapshots = new ConcurrentHashMap<>();
