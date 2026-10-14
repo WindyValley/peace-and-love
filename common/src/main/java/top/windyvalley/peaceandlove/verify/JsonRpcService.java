@@ -40,7 +40,8 @@ import java.util.concurrent.Executors;
  */
 public final class JsonRpcService {
 
-    private static final int DEFAULT_PORT = 25585;
+    /** 默认验证探针端口；同机多服用 -Dpal.verifyRpcPort 覆盖。 */
+    public static final int DEFAULT_PORT = 25585;
     private static final Gson GSON = new Gson();
 
     private final MinecraftServer server;

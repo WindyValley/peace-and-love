@@ -69,9 +69,13 @@ public final class PeaceAndLove {
         if (BuildFlags.ENABLE_VERIFY_RPC) {
             LifecycleEvent.SERVER_STARTING.register(server -> {
                 minecraftServer = server;
-                jsonRpcService = new JsonRpcService(server);
+                // 默认 25585；同一台机器并存第二个测试服（如 Fabric）时用
+                // -Dpal.verifyRpcPort=<port> 覆盖，避免与 NeoForge 主服抢端口。
+                int rpcPort = Integer.getInteger("pal.verifyRpcPort",
+                        top.windyvalley.peaceandlove.verify.JsonRpcService.DEFAULT_PORT);
+                jsonRpcService = new JsonRpcService(server, rpcPort);
                 jsonRpcService.start();
-                LOGGER.info("[JSON-RPC] 验证服务已随服务端启动");
+                LOGGER.info("[JSON-RPC] 验证服务已随服务端启动（端口 {}）", rpcPort);
             });
             LifecycleEvent.SERVER_STOPPED.register(server -> {
                 if (jsonRpcService != null) {
