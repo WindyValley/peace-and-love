@@ -10,6 +10,7 @@
     "HurtByTargetGoalMixin",
     "LivingEntityHurtMixin",
     "BrainMixin",
+    "WitherBossMixin",
     "MobMerchantMixin",
     "LootTableAccessor",
     "LootPoolAccessor",
