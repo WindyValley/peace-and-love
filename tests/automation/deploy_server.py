@@ -63,6 +63,13 @@ def main():
     if not JAR.exists():
         sys.exit(f"找不到 jar: {JAR}（先 ./gradlew :neoforge:build -PenableVerifyRpc=true -x test）")
 
+    # 1.5) 部署前固定核验（元数据/关键 Mixin/探针必须 on/无过程产物）
+    verify = Path(__file__).with_name("verify_jar.py")
+    r = subprocess.run([sys.executable, str(verify), str(JAR),
+                        "--expect-rpc", "on", "--platform", "neoforge"])
+    if r.returncode != 0:
+        sys.exit("!! jar 核验未通过，中止部署（检查构建开关 -PenableVerifyRpc=true）")
+
     # 1) 在跑则优雅停服
     if port_listening(GAME_PORT):
         print(">> 服务器在跑，RCON save-all + stop ...")
