@@ -8,11 +8,23 @@
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
 
-- **最后更新**：2026-10-14
+- **最后更新**：2026-10-15
 
 ---
 
-## 当前阶段（2026-10-14 更新）：特殊适配 NEUT-005/006/007 全部真机闭环，三卡 done（待分批 commit）
+## 当前阶段（2026-10-15）：Alpha 0.0.4 已发布
+
+tag **`v0.0.4`** 已推、release-ci 一次通过（run 38615721759），GitHub **私有 prerelease**「v0.0.4 (alpha)」，双端资产 `peaceandlove-0.0.4-neoforge.jar`(154664B) / `peaceandlove-0.0.4-fabric.jar`(142235B)，非草稿、prerelease=true、make_latest=false。
+
+- **版本号**：`gradle.properties mod_version` 0.0.3→0.0.4（单一来源），commit `73e1f00`，tag 打在含该 bump 的 main HEAD。
+- **tag 前本地对等构建**：`./gradlew clean build -PmodVersion=0.0.4`（与 release-ci 同命令、不带 verify 开关）BUILD SUCCESSFUL，`:common:test` 203 全绿、双端产物齐。
+- **正式包核验**：fabric.mod.json / neoforge.mods.toml version=0.0.4；`javap -c` 确认 `PeaceAndLove.init()` 内 verify 探针指令数 **0**（`BuildFlags.ENABLE_VERIFY_RPC=false` 编译期折叠，常量池里残留的 JsonRpcService 只在永不注册的死 lambda + 无条件 getter，运行时不启动 25585）；WitherBossMixin/ZombifiedPiglinMixin 均在包内；无 spikes/过程文档混入。
+- **发布资产下载回核**：与本地产物逐 zip 条目 CRC32——96 个业务条目全部一致；唯一差异是 architectury 注入目录的随机 hash 前缀名及其自引用的 `PlatformMethods.class`（方法体 getCurrentTarget/平台完全相同，仅包名串不同），属转换器每次构建的预期差异，与 0.0.2/0.0.3 回核口径一致。
+- **本版内容**：NEUT-005/006/007 特殊生物中立化（幻翼谓词收窄、凋灵侧头开火出口拦截、僵尸猪灵 35 格传染拦截、末影人凝视/监守者 Sonic Boom 回归），NeoForge + Fabric 双端 6 用例真机全绿。
+
+---
+
+## 历史阶段（2026-10-14）：特殊适配 NEUT-005/006/007 全部真机闭环，三卡 done，已合 main（随 0.0.4 发布）
 
 **分支**：`feat/special-mobs-neut-005-007` 的 7 个提交已 **fast-forward 合入 `main` 并推送 origin/main**（2026-10-14，未开 PR——线性历史直接 ff；feature 分支暂留）。代码 + common 单测 + **NeoForge/Fabric 双端真机**全部闭环，NEUT-005/006/007 三张卡置 **done**。叶子任务进度 **39/44（89%）**，剩余 5 张全是发布域 REL-001~005。common 单测 **203 全绿（0 skip）**——三处均运行时 Mixin/Goal 行为（纯 JUnit 造不出真实 Mob），验证归真机，未新增单测。
 
