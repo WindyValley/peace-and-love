@@ -116,4 +116,40 @@ class MobInspectionTest {
         assertTrue(title.contains("Boss"), title);
         assertTrue(title.contains("minecraft:warden"));
     }
+
+    @Test
+    void toMap_字段与record组件一一对应且key稳定() {
+        MobInspection i = new MobInspection(
+                "minecraft:warden", true, false, true, true, true, false,
+                true, "同族示警", false, 12.5, "玩家 Dev", 4.0, 30, 32);
+        var m = i.toMap();
+        assertEquals("minecraft:warden", m.get("entityId"));
+        assertEquals(Boolean.TRUE, m.get("adapted"));
+        assertEquals(Boolean.FALSE, m.get("whitelisted"));
+        assertEquals(Boolean.TRUE, m.get("brainBased"));
+        assertEquals(Boolean.TRUE, m.get("boss"));
+        assertEquals(Boolean.TRUE, m.get("neutralized"));
+        assertEquals(Boolean.FALSE, m.get("canTrade"));
+        assertEquals(Boolean.TRUE, m.get("angry"));
+        assertEquals("同族示警", m.get("angerSource"));
+        assertEquals(Boolean.FALSE, m.get("angerPermanent"));
+        assertEquals(12.5, m.get("remainingAngerSeconds"));
+        assertEquals("玩家 Dev", m.get("targetDescription"));
+        assertEquals(4.0, m.get("targetDistance"));
+        assertEquals(30.0, m.get("cooldownSeconds"));
+        assertEquals(32.0, m.get("cooldownDistance"));
+        // 15 个字段全覆盖
+        assertEquals(15, m.size(), m.keySet().toString());
+    }
+
+    @Test
+    void toMap_无目标时targetDescription归一空串而非null() {
+        // Gson 默认丢弃 null 值，探针 JSON 会少 key；契约要求无目标给空串，key 集合恒定。
+        MobInspection i = new MobInspection(
+                "minecraft:zombie", true, false, false, false, true, true,
+                false, "NONE", false, -1, null, -1, 30, 32);
+        var m = i.toMap();
+        assertEquals("", m.get("targetDescription"));
+        assertEquals(15, m.size(), m.keySet().toString());
+    }
 }

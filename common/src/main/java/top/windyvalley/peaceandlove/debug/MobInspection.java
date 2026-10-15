@@ -114,4 +114,32 @@ public record MobInspection(
         }
         return String.format("%.1f", v);
     }
+
+    /**
+     * 转成结构化 Map，供 verify-RPC 探针序列化成 JSON（真机脚本断言采集层用）。
+     *
+     * <p>字段与 record 组件一一对应，仍是纯基本类型/String，不引入 MC 运行时依赖。
+     * key 用稳定 snake_case，作为探针 {@code debug.inspect} 的对外契约。
+     */
+    public java.util.Map<String, Object> toMap() {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("entityId", entityId);
+        m.put("adapted", adapted);
+        m.put("whitelisted", whitelisted);
+        m.put("brainBased", brainBased);
+        m.put("boss", boss);
+        m.put("neutralized", neutralized);
+        m.put("canTrade", canTrade);
+        m.put("angry", angry);
+        m.put("angerSource", angerSource);
+        m.put("angerPermanent", angerPermanent);
+        m.put("remainingAngerSeconds", remainingAngerSeconds);
+        // Gson 默认不序列化 null（key 会整个消失）。无目标时归一成空串而非 null，
+        // 保证 debug.inspect 的 JSON key 集合在有/无目标下一致，脚本可稳定下标。
+        m.put("targetDescription", targetDescription == null ? "" : targetDescription);
+        m.put("targetDistance", targetDistance);
+        m.put("cooldownSeconds", cooldownSeconds);
+        m.put("cooldownDistance", cooldownDistance);
+        return m;
+    }
 }
