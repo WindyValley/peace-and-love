@@ -8,11 +8,30 @@
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
 
-- **最后更新**：2026-10-15
+- **最后更新**：2026-10-18
 
 ---
 
-## 当前阶段（2026-10-15）：Alpha 0.0.4 已发布
+## 当前阶段（2026-10-18）：/pal inspect 只读诊断 + debug.inspect 探针，双端真机全绿，已本地合入 main（未 push）
+
+`feat/pal-inspect` 7 个提交经 `--no-ff` merge commit **`e5d3155`** 合入本地 `main`（领先 origin/main 8 提交，**push 待用户拍板**）。合并树 `main^{tree} == feat^{tree}`，与真机验证内容逐字节一致。
+
+**本迭代内容**
+- `/pal inspect`：注视 32 格内生物，OP2 只读回显门控链（适配/白名单/中立化/可交易）与仇恨链（愤怒/来源/剩余时间/目标距离）；与 ConfigCommand 同名 `/pal`、`/peaceandlove` 根做 Brigadier 子树合并。
+- `debug.inspect` RPC 探针：按 name/type 返回结构化门控/仇恨字段，本地单机无 RCON 也能对采集结果做断言；渲染结论由 `MobInspectionTest` 纯 JUnit 覆盖（common 单测全绿）。
+- 白名单 add/remove 参数 `StringArgumentType.word()`→`ResourceLocationArgument.id()`，接受 `minecraft:zombie` 带冒号 id。
+- 新增本地单机全功能冒烟 `tests/automation/smoke_local_world.py`（起 runClient + world.create 作弊超平坦，双通道 25586 客户端 / 25585 PAL 探针，A–H 闭环）与 `scripts/deploy_pal_jar.py` 回迁。
+
+**双端真机（真客户端，非模拟）**：NeoForge 官方 smoke **23/23**；Fabric 经 world.enter 进已建存档跑同一套 B–H **23/23**。门控链(B)、中立被动(C)、真实攻击 PLAYER_DIRECT/KIN_ALERT/反击(D)、距离脱战(E)、白名单热切换+命令树副作用(F)、交易开窗/愤怒拒交(G)、凋灵 Boss 门控(H) 全通过。
+
+### 已知跨迭代问题（不属本 inspect 迭代，另开 fix 分支，勿夹带改）
+
+1. **[PAL] Fabric 端「距离脱战」跨端时序偶发**：玩家 tp 拉远 >32 后，Fabric 上僵尸目标可能提前清空（`debug.inspect.targetDistance=-1`），PAL 距离脱战分支因无当前目标不触发，只能走 30s 计时兜底，致 smoke E 阶段 8s 窗口偶发 FAIL（NeoForge 稳定通过；定点多轮中仅 Fabric 偶发 1 次）。本迭代 6 提交未改 AngerController，属既有跨端边界。**拟开 `fix/fabric-distance-calm`**：查 Fabric 下目标保持/距离判定与 NeoForge 的时序差，必要时在目标清空瞬间仍按末次位置评估距离脱战。
+2. **[mc-client-rpc 工具仓] Fabric 端进世界 RPC 连接重置**：Fabric 冷启动 mod-init 阶段即打印「RPC 监听 25586」，但客户端初始化未完成时 RPC 不处理请求；`world.create`(createFreshLevel) 会建出集成服却可能不把玩家带进世界（玩家数 0），`world.enter`(openWorld) 进世界瞬间重置当前 RPC 连接（10054）。NeoForge 无此问题。**拟在 mc-client-rpc 仓开 fix 分支**：就绪信号应等客户端主循环/标题屏稳定而非端口可连，进世界期间的 RPC 连接需重建/容错。当前 smoke 的 Fabric 跑法靠外部 runner 稳健就绪轮询 + world.enter 容错绕过。
+
+---
+
+## 历史阶段（2026-10-15）：Alpha 0.0.4 已发布
 
 tag **`v0.0.4`** 已推、release-ci 一次通过（run 38615721759），GitHub **私有 prerelease**「v0.0.4 (alpha)」，双端资产 `peaceandlove-0.0.4-neoforge.jar`(154664B) / `peaceandlove-0.0.4-fabric.jar`(142235B)，非草稿、prerelease=true、make_latest=false。
 
