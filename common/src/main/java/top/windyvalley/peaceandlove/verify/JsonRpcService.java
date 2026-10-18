@@ -165,6 +165,7 @@ public final class JsonRpcService {
             case "server.status" -> serverStatus();
             case "verify.retaliation" -> verifyRetaliation(params);
             case "mob.anger" -> mobAnger(params);
+            case "debug.inspect" -> debugInspect(params);
             case "pricing.scan" -> pricingScan();
             case "trade.probe" -> tradeProbe(params);
             default -> throw new IllegalArgumentException("未知方法: " + method);
@@ -413,6 +414,63 @@ public final class JsonRpcService {
             future.complete("错误: 查询异常: " + ex.getClass().getSimpleName()
                     + ": " + ex.getMessage());
           }
+        });
+        try {
+            return future.get(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return "错误: 主线程查询超时: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 真机诊断探针：按自定义名（name）或实体 id 路径（type）查一只 Mob，
+     * 返回 {@code MobInspector} 采集的结构化门控/仇恨字段。本地单机无 RCON，
+     * 命令 {@code /pal inspect} 的聊天回显读不到，采集正确性靠这里闭环断言。
+     */
+    private Object debugInspect(JsonObject params) {
+        if (server == null) {
+            return "错误: 服务端未就绪";
+        }
+        boolean byType = params.has("type");
+        String key = byType
+                ? params.get("type").getAsString()
+                : (params.has("name") ? params.get("name").getAsString() : null);
+        if (key == null) {
+            return "错误: 需要 name 或 type 参数";
+        }
+        java.util.concurrent.CompletableFuture<Object> future = new java.util.concurrent.CompletableFuture<>();
+        server.execute(() -> {
+            try {
+                Mob found = null;
+                for (ServerLevel level : server.getAllLevels()) {
+                    for (Entity e : level.getAllEntities()) {
+                        if (!(e instanceof Mob mob)) {
+                            continue;
+                        }
+                        boolean match = byType
+                                ? net.minecraft.world.entity.EntityType.getKey(mob.getType())
+                                        .getPath().equals(key)
+                                : key.equals(mob.getName().getString());
+                        if (match) {
+                            found = mob;
+                            break;
+                        }
+                    }
+                    if (found != null) {
+                        break;
+                    }
+                }
+                if (found == null) {
+                    future.complete("错误: 找不到 " + (byType ? "类型 " : "名为 ") + key + " 的生物");
+                    return;
+                }
+                top.windyvalley.peaceandlove.debug.MobInspection info =
+                        top.windyvalley.peaceandlove.debug.MobInspector.inspect(
+                                found, PeaceAndLove.config().get());
+                future.complete(info.toMap());
+            } catch (Exception ex) {
+                future.complete("错误: 查询异常: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            }
         });
         try {
             return future.get(2, java.util.concurrent.TimeUnit.SECONDS);

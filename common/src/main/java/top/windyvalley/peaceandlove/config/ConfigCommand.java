@@ -1,6 +1,5 @@
 package top.windyvalley.peaceandlove.config;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -8,7 +7,9 @@ import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import top.windyvalley.peaceandlove.PeaceAndLove;
 import top.windyvalley.peaceandlove.scope.AdaptedMobs;
 
@@ -90,11 +91,11 @@ public final class ConfigCommand {
         return Commands.literal("whitelist")
                 .then(Commands.literal("list").executes(this::whitelistList))
                 .then(Commands.literal("add")
-                        .then(Commands.argument("id", StringArgumentType.word())
+                        .then(Commands.argument("id", ResourceLocationArgument.id())
                                 .suggests(adaptedSuggestions())
                                 .executes(ctx -> whitelistChange(ctx, true))))
                 .then(Commands.literal("remove")
-                        .then(Commands.argument("id", StringArgumentType.word())
+                        .then(Commands.argument("id", ResourceLocationArgument.id())
                                 .suggests(whitelistSuggestions())
                                 .executes(ctx -> whitelistChange(ctx, false))));
     }
@@ -117,7 +118,8 @@ public final class ConfigCommand {
     }
 
     private int whitelistChange(CommandContext<CommandSourceStack> ctx, boolean add) {
-        String id = StringArgumentType.getString(ctx, "id");
+        ResourceLocation rl = ResourceLocationArgument.getId(ctx, "id");
+        String id = rl.toString();
         ConfigManager.WhitelistChange change = manager.changeWhitelist(id, add);
         CommandSourceStack src = ctx.getSource();
         if (change.changed()) {

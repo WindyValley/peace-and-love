@@ -90,6 +90,8 @@ public final class PeaceAndLove {
 
         // 命令最后注册（依赖配置就绪）
         new ConfigCommand(configManager).register();
+        // /pal inspect 只读诊断：向同一个 /pal 根追加 inspect 子节点（Brigadier 合并同名根）
+        new top.windyvalley.peaceandlove.debug.InspectCommand().register();
 
         LOGGER.info("Peace And Love 初始化完成");
     }
