@@ -241,6 +241,68 @@ def platform(length):
     time.sleep(0.8)
 
 
+def _nearest_entity_pos(type_id):
+    """最近指定类型实体的 (x,y,z)；无/异常返回 None。type_id 须带命名空间。"""
+    try:
+        r = rpc("world.entities", {"radius": 32}, timeout=6)
+        ents = [e for e in r.get("entities", []) if e.get("type") == type_id]
+        if not ents:
+            return None
+        e = min(ents, key=lambda d: d.get("distance", 1e9))
+        return float(e["x"]), float(e["y"]), float(e["z"])
+    except Exception:
+        return None
+
+
+def recenter_on(type_key):
+    """超距自愈：把玩家 tp 到最近目标的同格（同层），保证下一动作在触及内。
+
+    中立化的怪被击退后不会自己走回玩家，攻击/右键第一次判超距后若只 sleep
+    重试，距离不变必然连锁超距（fabric 上观察到的偶发红根因）。贴脸后距离≈0。
+    """
+    type_id = type_key if ":" in type_key else "minecraft:" + type_key
+    pos = _nearest_entity_pos(type_id)
+    if not pos:
+        return False
+    x, y, z = pos
+    cmd(f"tp @s {x:.3f} {y:.3f} {z:.3f}")
+    time.sleep(0.35)
+    return True
+
+
+def attack_retry(target="zombie", tries=4):
+    """player.attack 带自愈重试：-32003 超距就 tp 贴脸再打，其余错误 sleep 重试。返回结果或 None。"""
+    last = None
+    for i in range(tries):
+        try:
+            return rpc("player.attack", {"target": target}, timeout=8)
+        except Exception as e:
+            last = e
+            print(f"       · attack 重试{i+1}: {e}", flush=True)
+            if "32003" in str(e):
+                recenter_on(target)
+            else:
+                time.sleep(1.0)
+    print(f"       · attack {tries} 次未成功: {last}", flush=True)
+    return None
+
+
+def interact_retry(target="zombie", auto_close=True, tries=4, timeout=15):
+    """player.interact 带自愈重试。返回结果 dict；彻底失败返回 {'error': ...}。"""
+    last = None
+    for i in range(tries):
+        try:
+            return rpc("player.interact", {"target": target, "autoClose": auto_close}, timeout=timeout)
+        except Exception as e:
+            last = e
+            print(f"       · interact 重试{i+1}: {e}", flush=True)
+            if "32003" in str(e):
+                recenter_on(target)
+            else:
+                time.sleep(1.0)
+    return {"error": str(last)}
+
+
 def phase_b_inspect_gating():
     print("\n[B] debug.inspect 门控链", flush=True)
     cmd("kill @e[type=!player]"); time.sleep(0.8)
@@ -286,12 +348,7 @@ def phase_d_retaliation_kin():
     summon("dn", "minecraft:zombie", 4, 0, 0)   # 距 dt 3 格 near，<4 示警半径应示警
     summon("df", "minecraft:zombie", 9, 0, 0)   # 距 dt 8 格 far，>4 不应示警
     hp0 = float(rpc("player.state")["health"])
-    a = None
-    for _ in range(4):
-        try:
-            a = rpc("player.attack", {"target": "zombie"}, timeout=8); break
-        except Exception as e:
-            print(f"       · attack 重试: {e}", flush=True); time.sleep(1.0)
+    a = attack_retry("zombie")
     time.sleep(2.0)
     def src(n):
         r = pal("mob.anger", {"name": n})
@@ -407,13 +464,7 @@ def phase_g_trade():
     time.sleep(0.5)
     zi = pal("debug.inspect", {"name": "tz"})
     record(isinstance(zi, dict) and zi["canTrade"] and not zi["angry"], "交易前僵尸 canTrade=true 且不愤怒")
-    opened = None
-    for _ in range(4):
-        try:
-            opened = rpc("player.interact", {"target": "zombie", "autoClose": True}, timeout=15)
-            break
-        except Exception as e:
-            print(f"       · interact 重试: {e}", flush=True); time.sleep(1.0)
+    opened = interact_retry("zombie", True)
     record(isinstance(opened, dict) and opened.get("screenOpen"),
            f"非愤怒空手右键打开原版交易 GUI（screenOpen={opened.get('screenOpen') if isinstance(opened,dict) else opened} screen={opened.get('screen') if isinstance(opened,dict) else '-'}）")
     # 成交第 0 槽：空背包未必有报价货币，失败只记信息不计 FAIL
@@ -433,11 +484,7 @@ def phase_g_trade():
     time.sleep(1.0)
     zi2 = pal("debug.inspect", {"name": "tz"})
     record(isinstance(zi2, dict) and zi2["angry"], f"攻击后僵尸 angry=true（{zi2.get('angry') if isinstance(zi2,dict) else zi2}）")
-    blocked = None
-    try:
-        blocked = rpc("player.interact", {"target": "zombie", "autoClose": True}, timeout=15)
-    except Exception as e:
-        blocked = {"error": str(e)}
+    blocked = interact_retry("zombie", True)
     no_open = (isinstance(blocked, dict) and blocked.get("screenOpen") is False) or \
               (isinstance(blocked, dict) and "error" in blocked)
     record(no_open, f"愤怒状态右键不再开交易窗（screenOpen={blocked.get('screenOpen') if isinstance(blocked,dict) else blocked}）")
