@@ -8,7 +8,7 @@
 - **类型**：Minecraft Java 版 Mod（首发 1.21.1，Fabric + NeoForge）
 - **定位**：面向种田/建筑玩家的**和平主义玩法包**（保留血量与饥饿机制，用交易替代战斗获取掉落物）
 
-- **最后更新**：2026-10-18
+- **最后更新**：2026-10-19
 
 ---
 
@@ -24,10 +24,10 @@
 
 **双端真机（真客户端，非模拟）**：NeoForge 官方 smoke **23/23**；Fabric 经 world.enter 进已建存档跑同一套 B–H **23/23**。门控链(B)、中立被动(C)、真实攻击 PLAYER_DIRECT/KIN_ALERT/反击(D)、距离脱战(E)、白名单热切换+命令树副作用(F)、交易开窗/愤怒拒交(G)、凋灵 Boss 门控(H) 全通过。
 
-### 已知跨迭代问题（不属本 inspect 迭代，另开 fix 分支，勿夹带改）
+### 跨迭代问题（均已闭环，2026-10-19）
 
-1. **[PAL] Fabric 端「距离脱战」跨端时序偶发**：玩家 tp 拉远 >32 后，Fabric 上僵尸目标可能提前清空（`debug.inspect.targetDistance=-1`），PAL 距离脱战分支因无当前目标不触发，只能走 30s 计时兜底，致 smoke E 阶段 8s 窗口偶发 FAIL（NeoForge 稳定通过；定点多轮中仅 Fabric 偶发 1 次）。本迭代 6 提交未改 AngerController，属既有跨端边界。**拟开 `fix/fabric-distance-calm`**：查 Fabric 下目标保持/距离判定与 NeoForge 的时序差，必要时在目标清空瞬间仍按末次位置评估距离脱战。
-2. **[mc-client-rpc 工具仓] Fabric 端进世界 RPC 连接重置**：Fabric 冷启动 mod-init 阶段即打印「RPC 监听 25586」，但客户端初始化未完成时 RPC 不处理请求；`world.create`(createFreshLevel) 会建出集成服却可能不把玩家带进世界（玩家数 0），`world.enter`(openWorld) 进世界瞬间重置当前 RPC 连接（10054）。NeoForge 无此问题。**拟在 mc-client-rpc 仓开 fix 分支**：就绪信号应等客户端主循环/标题屏稳定而非端口可连，进世界期间的 RPC 连接需重建/容错。当前 smoke 的 Fabric 跑法靠外部 runner 稳健就绪轮询 + world.enter 容错绕过。
+1. **[PAL] Fabric 端「距离脱战」跨端时序** ✅ 已修：`fix/fabric-distance-calm` 经 `--no-ff` merge **`c95ee8e`** 合入并推送 main。根因是 AngerController 的「最后攻击玩家 UUID 兜底」仅对 Brain 系生效，僵尸（GOAL_BASED）在 Fabric 端 target 被原版提前清空后既无目标又无兜底 UUID，距离脱战不触发。修法：兜底扩到与 tickDecay 距离判定一致的集合（Goal 系走 mod 计时的非 NeutralMob 也记录并用 UUID 找回玩家算距离）。验证：common:test + 双端编译；Fabric/NeoForge 真机 smoke 各 23/23，E 阶段两条 angry=false。
+2. **[mc-client-rpc 工具仓] Fabric 端进世界 RPC 连接重置** ✅ 已修：`fix/fabric-ready-enter` 经 `--no-ff` merge **`461f284`** 合入并推送 mc-client-rpc main。就绪判据从「端口可连/单次 status 成功」收紧为「标题屏连续稳定 5s」（settle 期被初始引导屏盖回则节流重发 toTitle）；rpc 区分业务 RpcError 与传输 RpcConnError，world.create/enter 与 connect 进世界瞬间的 10054/空响应不再 `json.loads(b'')` 崩——变更只发一次绝不重试（避免造「名字 (1)」重名档），按 inWorld 终态裁决；launch_and_connect 修掉中文字符串匹配 dict status 的恒假判据并新增 `--loader fabric|neoforge`。验证：内嵌假 RPC server 确定性回归两场景全绿；Fabric 冷启动真机捕获引导屏盖回重切并稳定；Fabric/NeoForge 完整生命周期 verify_world_lifecycle 双双 ALL PASS。
 
 ---
 
