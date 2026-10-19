@@ -378,9 +378,11 @@ def phase_d_retaliation_kin():
 def phase_e_distance_decay():
     print("\n[E] 距离脱战（>32 格 calmDown）", flush=True)
     # 关键窗口：PAL 脱战阈值 32 格，僵尸 follow_range 默认 35。
-    # tp 到 34：>32 触发 PAL 距离脱战，又 <35 不让原版 NearestAttackableTargetGoal
-    # 当 tick 清掉 target（target 一旦为 null，Goal 系无 lastAttacker 回退，
-    # 距离分支不触发，只能干等 30s 计时）。铺台到 +38 保证落点不悬空。
+    # tp 到 34：>32 触发 PAL 距离脱战，又 <35 尽量不让原版 NearestAttackableTargetGoal
+    # 当 tick 清掉 target。即便 Fabric 端 target 被提前清空（targetDistance=-1），
+    # AngerController 现在也会用 lastAttackerByMob 兜底找回玩家算距离（Brain 系与
+    # 走 mod 计时的 Goal 系僵尸都记），距离脱战仍触发、不必干等 30s 计时。
+    # 铺台到 +38 保证落点不悬空。
     platform(40)
     p = rpc("player.pos")
     bx, by, bz = int(p["x"]), int(p["y"]), int(p["z"])
