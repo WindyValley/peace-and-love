@@ -34,12 +34,18 @@ public final class AngerController {
     private static final Map<UUID, AngerSource> angerSourceByMob = new ConcurrentHashMap<>();
 
     /**
-     * Brain 系「最后攻击来源玩家 UUID」。
+     * 「最后攻击来源玩家 UUID」。
      *
-     * <p>为何需要：玩家跑远、目标不可达时，原版 Brain 会自己清掉 ATTACK_TARGET
-     * 记忆（getTarget 也变 null）。若只靠目标记忆做脱战距离判定，此时两条都
-     * 解析不到玩家，“跑远立刻脱战”就永远不触发。记下最后攻击玩家后，仍能据
-     * 其 UUID 在世界里找回玩家、算距离。仅仇恨期内存在，calmDown 清除。
+     * <p>为何需要：玩家跑远、目标不可达时，原版可能自己清掉攻击目标
+     * （Brain 系清 ATTACK_TARGET 记忆、getTarget 变 null；Goal 系僵尸在 Fabric
+     * 端被 tp 拉远后 getTarget 也可能提前变 null，targetDistance=-1）。若只靠
+     * 当前目标做脱战距离判定，此时解析不到玩家，“跑远立刻脱战”就永远不触发，
+     * 只能干等仇恨计时结束。记下最后攻击玩家后，仍能据其 UUID 在世界里找回玩家、
+     * 算距离。仅仇恨期内存在，calmDown 清除。
+     *
+     * <p>记录范围与 {@link #tickDecay} 真正做距离判定的集合一致：Brain 系一律记；
+     * Goal 系里只有走 mod 计时的（非 {@link NeutralMob}）才记——NeutralMob Goal 系
+     * 由原版 persistentAnger 自管、tickDecay 直接跳过，记了也用不上。
      */
     private static final Map<UUID, UUID> lastAttackerByMob = new ConcurrentHashMap<>();
 
@@ -60,7 +66,8 @@ public final class AngerController {
 
         // 仇恨计时：Brain 系一律用 mod 计时（即使是 NeutralMob），与 BrainKinAlerter
         // 及 tickDecay 保持一致；Goal 系 NeutralMob 走原版 persistentAnger。
-        if (AdaptedMobs.BRAIN_BASED.contains(mob.getType())) {
+        boolean brainBased = AdaptedMobs.BRAIN_BASED.contains(mob.getType());
+        if (brainBased) {
             angerTickByMob.put(mob.getUUID(), cooldownTicks());
         } else if (mob instanceof NeutralMob neutral) {
             neutral.setPersistentAngerTarget(attacker.getUUID());
@@ -70,7 +77,10 @@ public final class AngerController {
         }
 
         setAngerSource(mob, AngerSource.PLAYER_DIRECT);
-        if (AdaptedMobs.BRAIN_BASED.contains(mob.getType())) {
+        // 记录最后攻击玩家供脱战距离兜底：Brain 系一律记；Goal 系里仅走 mod 计时的
+        // （非 NeutralMob）才记——NeutralMob Goal 系 tickDecay 直接跳过，用不上。
+        // Fabric 端僵尸被 tp 拉远后 getTarget 可能提前清空，靠它找回玩家算距离。
+        if (brainBased || !(mob instanceof NeutralMob)) {
             lastAttackerByMob.put(mob.getUUID(), attacker.getUUID());
         }
 
@@ -238,8 +248,10 @@ public final class AngerController {
                     .map(t -> (net.minecraft.world.entity.LivingEntity) t)
                     .orElse(null);
         }
-        // 仍无目标（玩家跑远、原版已清攻击记忆）：用最后攻击玩家 UUID 找回玩家
-        if (brain && targetEnt == null && lastAttackerByMob.containsKey(mob.getUUID())) {
+        // 仍无目标（玩家跑远、原版已清攻击记忆/目标）：用最后攻击玩家 UUID 找回玩家。
+        // Brain 与走 mod 计时的 Goal 系（如 Fabric 端被 tp 拉远后 getTarget 提前清空的
+        // 僵尸）都靠这里兜底；NeutralMob Goal 系在本方法开头已 return，到不了这。
+        if (targetEnt == null && lastAttackerByMob.containsKey(mob.getUUID())) {
             UUID attackerId = lastAttackerByMob.get(mob.getUUID());
             if (mob.level() instanceof net.minecraft.server.level.ServerLevel sl) {
                 targetEnt = sl.getServer().getPlayerList().getPlayer(attackerId);
