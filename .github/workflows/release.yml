@@ -65,11 +65,11 @@ jobs:
       - name: Create GitHub Release and upload jars
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }} (alpha)
+          name: ${{ github.ref_name }} (Beta)
           files: dist/*.jar
           generate_release_notes: true
           fail_on_unmatched_files: true
-          # 0.x 一律标记为预发布，不当作正式版本
+          # 0.x 标记为预发布（Beta），但作为最新版本展示
           prerelease: true
-          # 重跑时覆盖同名 Release
-          make_latest: false
+          # 0.1.0 是首个公开版，设为 latest
+          make_latest: true
